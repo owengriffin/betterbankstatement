@@ -1,0 +1,73 @@
+--- 
+- :category: Food
+  :expression: !ruby/regexp /(TESCO STORE|M\&S SIMPLY FOOD|DOMINOS|BURGER KING|KFC|COFFEE|SAINSBURYS|WAITROSE|CO-OP|EDEKA AKTIV)/
+- :category: Food
+  :expression: !ruby/regexp /MARKS \& SPENCER/
+- :category: Food
+  :expression: !ruby/regexp /BEEFEATR/
+- :category: Car
+  :expression: !ruby/regexp /CHURCHILL/
+- :category: Internet
+  :expression: !ruby/regexp /VIRGIN MEDIA/
+- :category: Internet
+  :expression: !ruby/regexp /GOTOMYPC/
+- :category: Train
+  :expression: !ruby/regexp /(FGW SELF SERVICE|RAILWAYS|FIRST GREAT WEST)/
+- :category: Savings
+  :expression: !ruby/regexp /NS\&I PB DURHAM/
+- :category: Social
+  :expression: !ruby/regexp /RUNESCAPE/
+- :category: Car Petrol
+  :expression: !ruby/regexp /(PETROL|ESSO|SERVICE STAT|AUTOCENTER|BP )/
+- :category: Car Parking
+  :expression: !ruby/regexp /READING RAIL PRK/
+- :category: Car Parking
+  :expression: !ruby/regexp /ORACLE CENTRE PRK/
+- :category: Car Maintainence
+  :expression: !ruby/regexp /WWW\.DVLA\.GOV\.UK/
+- :category: Car Maintainence
+  :expression: !ruby/regexp /HALFORDS/
+- :category: Car Parking
+  :expression: !ruby/regexp /BP /
+- :category: Payment
+  :expression: !ruby/regexp /PAYMENT/
+- :category: Mobile
+  :expression: !ruby/regexp /FONEBITZ/
+- :category: Mobile
+  :expression: !ruby/regexp /GOOGLE \*COPILOT/
+- :category: Social
+  :expression: !ruby/regexp /CHINA PALACE/
+- :category: Social
+  :expression: !ruby/regexp /NATURAL HISTORY MUSEUM/
+- :category: Social
+  :expression: !ruby/regexp /VUE BSL LTD/
+- :category: Social
+  :expression: !ruby/regexp /JOHN NIKE LEISURES/
+- :category: Holiday
+  :expression: !ruby/regexp /HOTEL/
+- :category: Holiday
+  :expression: !ruby/regexp /E\/TUNNEL/
+- :category: Holiday
+  :expression: !ruby/regexp /LASTMINUTE\.COM/
+- :category: Social
+  :expression: !ruby/regexp /TICKETMASTER/
+- :category: Bus
+  :expression: !ruby/regexp /NATIONAL EXPRESS/
+- :category: Shopping
+  :expression: !ruby/regexp /AMAZON/
+- :category: Shopping
+  :expression: !ruby/regexp /GAME STORES/
+- :category: Shopping
+  :expression: !ruby/regexp /WATERSTONES/
+- :category: Shopping
+  :expression: !ruby/regexp /JOHN LEWIS/
+- :category: Shopping
+  :expression: !ruby/regexp /JOULES CLOTHING/
+- :category: Shopping
+  :expression: !ruby/regexp /BANJO CYCLES/
+- :category: Shopping
+  :expression: !ruby/regexp /RADLEY/
+- :category: Shopping
+  :expression: !ruby/regexp /DIXONS/
+- :category: Expenses
+  :expression: !ruby/regexp /SANDTON SUN/
