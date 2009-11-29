@@ -9,7 +9,7 @@ require 'net/http'
 require 'net/https'
 require 'rexml/document'
 require 'google_chart'
-
+require 'markaby'
 
 
 $filters = YAML.load_file('filters.yaml')
@@ -60,7 +60,7 @@ end
 
 transactions=[]
 Dir.foreach("statements") { |filename|
-  if filename =~ /.*\.txt$/
+  if filename =~ /200911\.txt$/
     puts filename
     File.open("statements/#{filename}") do |file|
       while content = file.gets
@@ -192,5 +192,29 @@ GoogleChart::BarChart.new('680x400', "Analysis of spending", :vertical, false) d
       file.write(resp.body)
     }
   }
+end
+
+mab = Markaby::Builder.new
+  mab.html do
+    head { title "Category Summary" }
+    body do
+      h1 "Category Summary"
+      ul do
+      categories = Category.all.sort { |x,y| x.total_negative <=> y.total_negative}
+      categories.each { |category|
+        amount = category.total_negative * -1
+        li "#{category.name} #{amount}"
+        ul do
+          category.transactions.each { |transaction|
+            li "#{transaction.date} #{transaction.amount} #{transaction.details}"
+          }
+        end
+      }
+      end
+    end
+  end
+
+File.open("category.html", "w") do |file|
+  file.write(mab.to_s)
 end
 
