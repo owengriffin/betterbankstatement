@@ -10,15 +10,105 @@ require 'net/https'
 require 'rexml/document'
 require 'google_chart'
 
-
-
 $filters = YAML.load_file('filters.yaml')
 
-class Transaction
-  attr_accessor :received
-  attr_accessor :date
-  attr_accessor :details
-  attr_accessor :amount
+module HSBCChart
+
+  STATEMENT_LINE_REGEX=/^\s*([0-9]{2}\s+[a-z]{3}\s+[0-9]{2})\s+([0-9]{2}\s+[a-z]{3}\s+[0-9]{2})\s+(.+)\s+([0-9\.]+(?:CR)?)\s*$/mi
+
+  class Parser
+
+    LOCATION_REGEXP=/.*\s(.*\s.*)$/
+    PAYEE_REGEXP=/^(.*)(\s.*\s.*)?$/
+
+    def get_location(details)
+      details.match(LOCATION_REGEXP)[1] if details =~ LOCATION_REGEXP
+    end
+
+    def get_payee(details)
+      s = details.split
+      return s[0..s.length / 2].join " "
+    end
+
+    def open(filename)
+      File.open(filename) do |file|
+      while content = file.gets
+        if content =~ STATEMENT_LINE_REGEXP
+          match = content.match(STATEMENT_LINE_REGEXP)
+          if match
+            received = Date.strptime(match[1], '%d %b %y')
+            date = Date.strptime(match[2], '%d %b %y')
+            details = match[3].gsub(/\s+$/,'')
+            amount = match[4]
+
+            transaction = Transaction.new
+            transaction.location = Location.create(get_location(details))
+            transaction.payee = Payee.create(get_payee(details))
+          else
+            puts "I don't understand #{content}"
+          end
+          transactions << Transaction.new(content)
+        end
+      end
+    end
+    end
+  end
+
+  class Location
+    attr_accessor :name
+    attr_accessor :payees
+
+    def initialize(name)
+      @name = name
+    end
+
+    @@locations = []
+
+    def Location.create(name)
+      location = Location.find_by_name name
+      location = Location.new(name) if location ==nil
+      return location
+    end
+
+    def Location.find_by_name(name)
+      @@locations.each {|location|
+        return location if location.name == name
+      }
+      return nil
+    end
+  end
+  
+  class Payee
+    attr_accessor :transactions
+    attr_accessor :name
+
+    def initialize(name)
+      @name = name
+      @transactions = []
+    end
+
+    @@payees = []
+    
+    def Payee.create(name)
+      payee = Payee.find_by_name name
+      payee = Payee.new(name) if payee == nil
+      return payee
+    end
+
+    def Payee.find_by_name(name)
+      @@payees.each { |payee|
+        return payee if payee.name == name
+      }
+      return nil
+    end
+      
+  end
+
+  class Transaction
+    attr_accessor :received
+    attr_accessor :date
+    attr_accessor :details
+    attr_accessor :amount
 
   @@regexp = /^\s*([0-9]{2}\s+[a-z]{3}\s+[0-9]{2})\s+([0-9]{2}\s+[a-z]{3}\s+[0-9]{2})\s+(.+)\s+([0-9\.]+(?:CR)?)\s*$/mi
 
@@ -57,6 +147,7 @@ class Transaction
   end
 end
 
+end
 
 transactions=[]
 Dir.foreach("statements") { |filename|
