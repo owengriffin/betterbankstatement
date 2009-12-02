@@ -220,10 +220,48 @@ module HSBCChart
     attr_accessor :location
     attr_accessor :payee
   end
+
+  class Graph
+    def Graph.category_piechart(filename="piechart.png")
+      GoogleChart::PieChart.new('680x400', "Analysis of spending",false) do |chart|
+        HSBCChart::Category.all.each { |category|
+          amount = category.total_negative * -1
+          chart.data "#{category.name} (£#{amount})", amount if amount > 0
+        }
+        
+        uri = URI.parse(chart.to_escaped_url)
+        Net::HTTP.start(uri.host) { |http|
+          resp = http.get("#{uri.path}?#{uri.query}")
+          open(filename, "wb") { |file|
+            file.write(resp.body)
+          }
+        }
+      end
+    end
+    def Graph.category_barchart(filename="barchart.png")
+      colours=['660000', '006600', '000066', '660033', '336600', '003366', '660066', '666600', '006666']
+      GoogleChart::BarChart.new('680x400', "Analysis of spending", :vertical, false) do |chart|
+        colour_index = 0
+        # Sort all the categories by their total negative transactions
+        categories = Category.all.sort { |x,y| x.total_negative <=> y.total_negative}
+        categories.each { |category|
+          amount = category.total_negative * -1
+          chart.data "#{category.name} (£#{amount})", [amount], colours[colour_index] if amount > 0
+          colour_index = colour_index + 1
+        }
+        
+        uri = URI.parse(chart.to_escaped_url)
+        Net::HTTP.start(uri.host) { |http|
+          resp = http.get("#{uri.path}?#{uri.query}")
+          open(filename, "wb") { |file|
+            file.write(resp.body)
+          }
+        }
+      end
+    end
+  end
+
 end
-
-
-
 
 parser = HSBCChart::Parser.new
 transactions=[]
@@ -235,6 +273,9 @@ Dir.foreach("statements") { |filename|
 
 HSBCChart::Payee.load_filters("filters.yaml")
 HSBCChart::Payee.categorize_all
+
+HSBCChart::Graph.category_barchart
+HSBCChart::Graph.category_piechart
 
 # HSBCChart::Payee.all.each {|payee|
 #   puts "Payee: #{payee.name}"
@@ -254,41 +295,6 @@ HSBCChart::Category.all.each { |category|
 
 
 
-GoogleChart::PieChart.new('680x400', "Analysis of spending",false) do |chart|
-  HSBCChart::Category.all.each { |category|
-    amount = category.total_negative * -1
-    chart.data "#{category.name} (£#{amount})", amount if amount > 0
-  }
-  
-  puts chart.to_escaped_url
-  uri = URI.parse(chart.to_escaped_url)
-  Net::HTTP.start(uri.host) { |http|
-    resp = http.get("#{uri.path}?#{uri.query}")
-    open("piechart.png", "wb") { |file|
-      file.write(resp.body)
-    }
-  }
-end
 
-# colours=['660000', '006600', '000066', '660033', '336600', '003366', '660066', '666600', '006666']
-# #t=transactions.sort { |x,y| x.received <=> y.received }
-# GoogleChart::BarChart.new('680x400', "Analysis of spending", :vertical, false) do |chart|
 
-#   colour_index = 0
-#   categories = Category.all.sort { |x,y| x.total_negative <=> y.total_negative}
-#   categories.each { |category|
-#     amount = category.total_negative * -1
-#     chart.data "#{category.name} (£#{amount})", [amount], colours[colour_index] if amount > 0
-#     colour_index = colour_index + 1
-#   }
-  
-#   puts chart.to_escaped_url
-#   uri = URI.parse(chart.to_escaped_url)
-#   Net::HTTP.start(uri.host) { |http|
-#     resp = http.get("#{uri.path}?#{uri.query}")
-#     open("barchart.png", "wb") { |file|
-#       file.write(resp.body)
-#     }
-#   }
-# end
 
