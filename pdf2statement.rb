@@ -18,6 +18,7 @@ module HSBCChart
     LOCATION_REGEXP=/.*\s(.*\s.*)$/
     PAYEE_REGEXP=/^(.*)(\s.*\s.*)?$/
     ACCOUNT_REGEXP=/([A-Z ]+)\s+([0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4})/
+    CREDIT_LIMIT_REGEXP=/Credit Limit\s+£\s?([0-9,.])*/
 
     def get_location(details)
       details.match(LOCATION_REGEXP)[1] if details =~ LOCATION_REGEXP
@@ -40,6 +41,10 @@ module HSBCChart
       transactions = []
       File.open(filename) do |file|
         while content = file.gets
+          match = content.match(Parser::CREDIT_LIMIT_REGEXP)
+          if match
+            puts match.inspect
+          end
           match = content.match(Parser::ACCOUNT_REGEXP)
           if match
             account = Account.create(match[1], match[2])
@@ -69,6 +74,7 @@ module HSBCChart
   class Account
     attr_accessor :name
     attr_accessor :number
+    attr_accessor :credit_limit
     
     @@accounts = []
     def Account.create(name, number)
