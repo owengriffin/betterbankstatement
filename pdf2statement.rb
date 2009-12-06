@@ -39,6 +39,7 @@ module HSBCChart
 
     def open(filename)
       transactions = []
+      account = nil
       File.open(filename) do |file|
         while content = file.gets
           match = content.match(Parser::CREDIT_LIMIT_REGEXP)
@@ -60,6 +61,7 @@ module HSBCChart
               transaction.date = Date.strptime(match[2], '%d %b %y')
               transaction.received = Date.strptime(match[1], '%d %b %y')
               transaction.amount = get_amount(match[4])
+              transaction.account = account if account != nil
               #puts transaction.inspect
             else
               puts "Unable to parse #{content}"
