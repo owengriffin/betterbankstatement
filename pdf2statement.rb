@@ -10,6 +10,7 @@ require 'net/https'
 require 'rexml/document'
 require 'google_chart'
 require 'markaby'
+require 'hpricot'
 
 module HSBCChart
 
@@ -35,6 +36,17 @@ module HSBCChart
       else
         return amount.to_f * -1
       end
+    end
+
+    def open_xhb(filename)
+      transactions = []
+      File.open(filename) do |file|
+        doc = Hpricot.XML(file)
+        (doc/:account).each { |account|
+          puts account
+        }
+      end
+      return transactions
     end
 
     def open_qif(filename)
@@ -326,12 +338,13 @@ transactions=[]
 #   end
 # }
 
-Dir.foreach("bankaccount") { |filename|
-  if filename =~ /.*\.qif$/
-    transactions = transactions + parser.open_qif("bankaccount/#{filename}")
-  end
-}
+# Dir.foreach("bankaccount") { |filename|
+#   if filename =~ /.*\.qif$/
+#     transactions = transactions + parser.open_qif("bankaccount/#{filename}")
+#   end
+# }
 
+transaction = parser.open_xhb("bankaccount/homebank.xhb")
 
 HSBCChart::Payee.load_filters("filters.yaml")
 HSBCChart::Payee.categorize_all
