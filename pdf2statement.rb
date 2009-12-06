@@ -41,13 +41,18 @@ module HSBCChart
       end
     end
 
+    def get_description(description)
+      description = description.gsub(/(JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[0-9]{2}/, '')
+      return description.gsub(/@[0-9]{2}:[0-9]{2}/, '')
+    end
+
     def open_csv(filename, account=nil)
       transactions = []
       CSV.open(filename, "r", ';') do |row|
         if row[3] != nil
           transaction = Transaction.new
           transaction.account = account if account != nil
-          transaction.description = row[3]
+          transaction.description = get_description(row[3])
           transaction.location = Location.create(get_location(transaction.description))
           transaction.payee = Payee.create(get_payee(transaction.description))
           transaction.payee.transactions << transaction
