@@ -51,6 +51,13 @@ module HSBCChart
           transaction.location = Location.create(get_location(transaction.description))
           transaction.payee = Payee.create(get_payee(transaction.description))
           transaction.payee.transactions << transaction
+
+          if row[6] != nil
+            category = Category.create(row[6]) 
+            transaction.payee.categories << category
+            category.payees << transaction.payee
+          end
+
           transaction.date = Date.strptime(row[0], '%d/%m/%Y')
           transaction.amount = row[5].to_i
           transactions << transaction
