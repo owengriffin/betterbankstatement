@@ -51,7 +51,7 @@ module HSBCChart
       return transactions
     end
 
-    def open_qif(filename)
+    def open_qif(filename, account = nil)
       transactions = []
       File.open(filename) do |file|
         transaction = nil
@@ -60,6 +60,7 @@ module HSBCChart
             # Date, so new transaction
             transactions << transaction if transaction != nil
             transaction = Transaction.new
+            transaction.account = account if account != nil
             transaction.date = Date.strptime(content[1..content.length], '%d/%m/%Y')
           elsif content =~ /^T/
             transaction.amount = get_amount(content[1..content.length])
