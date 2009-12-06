@@ -11,6 +11,7 @@ require 'rexml/document'
 require 'google_chart'
 require 'markaby'
 require 'hpricot'
+require 'csv'
 
 module HSBCChart
 
@@ -40,12 +41,45 @@ module HSBCChart
       end
     end
 
+    def open_csv(filename, account=nil)
+      transactions = []
+      CSV.open(filename, "r", ';') do |row|
+        if row[3] != nil
+          transaction = Transaction.new
+          transaction.account = account if account != nil
+          transaction.description = row[3]
+          transaction.location = Location.create(get_location(transaction.description))
+          transaction.payee = Payee.create(get_payee(transaction.description))
+          transaction.payee.transactions << transaction
+          transaction.date = Date.strptime(row[0], '%d/%m/%Y')
+          transaction.amount = row[5].to_i
+          transactions << transaction
+        end
+      end
+      return transactions
+    end
+
     def open_xhb(filename)
       transactions = []
       File.open(filename) do |file|
         doc = Hpricot.XML(file)
-        (doc/:account).each { |account|
-          puts account
+        accounts = []
+        (doc/:account).each { |account_element|
+          account = Account.create(account_element['name'], account_element['number'])
+          accounts << { "account" => account, "xhb_id" => account_element['id'] }
+        }
+        (doc/:ope).each { |transaction_element|
+          account = nil
+          accounts.each { |account_entry|
+            if account_entry["xhb_id"] == transaction_element["account"]
+              account = account_entry["account"]
+            end
+          }
+          transaction = Transaction.new
+          transaction.account = account if account != nil          
+          transaction.amount = transaction_element['amount']
+          
+          transactions << transaction
         }
       end
       return transactions
@@ -82,12 +116,13 @@ module HSBCChart
       account = nil
       File.open(filename) do |file|
         while content = file.gets
-          match = content.match(Parser::CREDIT_LIMIT_REGEXP)
-          if match
-            puts match.inspect
-          end
+          # match = content.match(Parser::CREDIT_LIMIT_REGEXP)
+          # if match
+          #   puts match.inspect
+          # end
           match = content.match(Parser::ACCOUNT_REGEXP)
           if match
+            puts content
             account = Account.create(match[1], match[2])
           end
           if content =~ Parser::STATEMENT_LINE_REGEXP
@@ -120,6 +155,8 @@ module HSBCChart
     
     @@accounts = []
     def Account.create(name, number)
+      name = name.strip
+      number = number.gsub(/ /, '')
       account = Account.find_by_name_and_number(name, number)
       if account == nil
         account = Account.new
@@ -135,6 +172,10 @@ module HSBCChart
         return account if account.name == name and account.number == number
       }
       return nil
+    end
+
+    def Account.all
+      return @@accounts
     end
   end
 
@@ -297,6 +338,7 @@ module HSBCChart
     attr_accessor :amount
     attr_accessor :location
     attr_accessor :payee
+    attr_accessor :account
   end
 
   class Graph
@@ -370,11 +412,17 @@ end
 
 parser = HSBCChart::Parser.new
 transactions=[]
-# Dir.foreach("statements") { |filename|
-#   if filename =~ /.*\.txt$/
-#     transactions = transactions + parser.open("statements/#{filename}")
-#   end
-# }
+ # Dir.foreach("statements") { |filename|
+ #   if filename =~ /.*\.txt$/
+ #     transactions = transactions + parser.open("statements/#{filename}")
+ #   end
+ # }
+
+Dir.foreach("bankaccount") { |filename|
+   if filename =~ /.*\.csv$/
+     transactions = transactions + parser.open_csv("bankaccount/#{filename}")
+   end
+ }
 
 # Dir.foreach("bankaccount") { |filename|
 #   if filename =~ /.*\.qif$/
@@ -382,27 +430,32 @@ transactions=[]
 #   end
 # }
 
-transaction = parser.open_xhb("bankaccount/homebank.xhb")
+HSBCChart::Account.all.each { |account|
+puts account.inspect
+}
 
-# HSBCChart::Payee.load_filters("filters.yaml")
-# HSBCChart::Payee.categorize_all
+transactions = parser.open_xhb("bankaccount/homebank.xhb")
 
-# HSBCChart::Graph.category_barchart
-# HSBCChart::Graph.category_piechart
+HSBCChart::Payee.load_filters("filters.yaml")
+HSBCChart::Payee.categorize_all
 
-# HSBCChart::Payee.all.each {|payee|
-#   puts "Payee: #{payee.name}"
-#   payee.transactions.each { |transaction|
-#     puts "   #{transaction.date} #{transaction.description}"
-#   }
-# }
+HSBCChart::Graph.category_barchart
+HSBCChart::Graph.category_piechart
 
-# HSBCChart::Location.all.each {|location|
-#   puts "Location #{location.name}"
-# }
+HSBCChart::Payee.all.each {|payee|
+  puts "Payee: #{payee.name}"
+  payee.transactions.each { |transaction|
+    puts "   #{transaction.date} #{transaction.description}"
+  }
+}
+
+HSBCChart::Location.all.each {|location|
+  puts "Location #{location.name}"
+}
 
 # HSBCChart::Category.all.each { |category|
 #   #puts "Category #{category.name}"
 #   puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
 # }
-# HSBCChart::Statement.categories
+
+HSBCChart::Statement.categories
