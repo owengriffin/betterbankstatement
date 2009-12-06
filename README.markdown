@@ -16,7 +16,7 @@ sudo aptitude install build-essential libxml2-dev libxslt1-dev libopenssl-ruby
 
 ===Ruby libraries===
 
-sudo gem install mechanize hpricot gchartrb markaby
+sudo gem install mechanize hpricot gchartrb markaby httparty
 
 sudo apt-get install libglib2.0-dev
 sudo gem install rpeg-markdown 
