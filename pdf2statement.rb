@@ -30,9 +30,36 @@ module HSBCChart
     def get_amount(amount)
       if amount =~ /^[0-9\.]+CR$/
         return amount[0...amount.length-2].to_f
+      elsif amount =~ /^-/
+        return amount.to_f
       else
         return amount.to_f * -1
       end
+    end
+
+    def open_qif(filename)
+      transactions = []
+      File.open(filename) do |file|
+        transaction = nil
+        while content = file.gets
+          if content =~ /^D/
+            # Date, so new transaction
+            transactions << transaction if transaction != nil
+            transaction = Transaction.new
+            transaction.date = Date.strptime(content[1..content.length], '%d/%m/%Y')
+          elsif content =~ /^T/
+            transaction.amount = get_amount(content[1..content.length])
+          elsif content =~ /^P/
+            transaction.payee = Payee.create(get_payee(content[1..content.length]))
+            transaction.payee.transactions << transaction
+          elsif content =~ /^\^/
+            # Ignore lines beginning with ^
+          else
+            puts "I dunno what #{content} means."
+          end
+        end
+      end
+      return transactions
     end
 
     def open(filename)
@@ -293,11 +320,18 @@ end
 
 parser = HSBCChart::Parser.new
 transactions=[]
-Dir.foreach("statements") { |filename|
-  if filename =~ /.*\.txt$/
-    transactions = transactions + parser.open("statements/#{filename}")
+# Dir.foreach("statements") { |filename|
+#   if filename =~ /.*\.txt$/
+#     transactions = transactions + parser.open("statements/#{filename}")
+#   end
+# }
+
+Dir.foreach("bankaccount") { |filename|
+  if filename =~ /.*\.qif$/
+    transactions = transactions + parser.open_qif("bankaccount/#{filename}")
   end
 }
+
 
 HSBCChart::Payee.load_filters("filters.yaml")
 HSBCChart::Payee.categorize_all
