@@ -18,6 +18,8 @@ module HSBCChart
     STATEMENT_LINE_REGEXP=/^\s*([0-9]{2}\s+[a-z]{3}\s+[0-9]{2})\s+([0-9]{2}\s+[a-z]{3}\s+[0-9]{2})\s+(.+)\s+([0-9\.]+(?:CR)?)\s*$/mi
     LOCATION_REGEXP=/.*\s(.*\s.*)$/
     PAYEE_REGEXP=/^(.*)(\s.*\s.*)?$/
+    ACCOUNT_REGEXP=/([A-Z ]+)\s+([0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4})/
+    CREDIT_LIMIT_REGEXP=/Credit Limit\s+£\s?([0-9,.])*/
 
     def get_location(details)
       details.match(LOCATION_REGEXP)[1] if details =~ LOCATION_REGEXP
@@ -78,6 +80,14 @@ module HSBCChart
       transactions = []
       File.open(filename) do |file|
         while content = file.gets
+          match = content.match(Parser::CREDIT_LIMIT_REGEXP)
+          if match
+            puts match.inspect
+          end
+          match = content.match(Parser::ACCOUNT_REGEXP)
+          if match
+            account = Account.create(match[1], match[2])
+          end
           if content =~ Parser::STATEMENT_LINE_REGEXP
             match = content.match(Parser::STATEMENT_LINE_REGEXP)
             if match
@@ -97,6 +107,31 @@ module HSBCChart
         end
       end
       return transactions
+    end
+  end
+
+  class Account
+    attr_accessor :name
+    attr_accessor :number
+    attr_accessor :credit_limit
+    
+    @@accounts = []
+    def Account.create(name, number)
+      account = Account.find_by_name_and_number(name, number)
+      if account == nil
+        account = Account.new
+        account.name = name
+        account.number = number
+        @@accounts << account
+      end
+      return account
+    end
+
+    def Account.find_by_name_and_number(name, number)
+      @@accounts.each { |account|
+        return account if account.name == name and account.number == number
+      }
+      return nil
     end
   end
 
@@ -346,11 +381,11 @@ transactions=[]
 
 transaction = parser.open_xhb("bankaccount/homebank.xhb")
 
-HSBCChart::Payee.load_filters("filters.yaml")
-HSBCChart::Payee.categorize_all
+# HSBCChart::Payee.load_filters("filters.yaml")
+# HSBCChart::Payee.categorize_all
 
-HSBCChart::Graph.category_barchart
-HSBCChart::Graph.category_piechart
+# HSBCChart::Graph.category_barchart
+# HSBCChart::Graph.category_piechart
 
 # HSBCChart::Payee.all.each {|payee|
 #   puts "Payee: #{payee.name}"
@@ -363,8 +398,8 @@ HSBCChart::Graph.category_piechart
 #   puts "Location #{location.name}"
 # }
 
-HSBCChart::Category.all.each { |category|
-  #puts "Category #{category.name}"
-  puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
-}
-HSBCChart::Statement.categories
+# HSBCChart::Category.all.each { |category|
+#   #puts "Category #{category.name}"
+#   puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
+# }
+# HSBCChart::Statement.categories
