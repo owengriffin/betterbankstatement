@@ -275,6 +275,11 @@ module HSBCChart
     def Payee.all
       return @@payees
     end
+
+    def Payee.after(date)
+      @@payees.each { |payee|
+      }
+    end
   end
 
   class Category
@@ -396,7 +401,11 @@ module HSBCChart
 
   class Statement
 
-    def Statement.payees(filename="payees.html")
+    def Statement.payees(filename="payees.html", from=nil)
+      if from == nil
+        from = DateTime.now
+        from = Date.new(from.year, from.month - 1, from.day)
+      end
       mab = Markaby::Builder.new
       mab.html do
         head { title "Category Summary" }
@@ -407,7 +416,10 @@ module HSBCChart
             payees.each { |payee|
               li payee.name
               ul do
-                payee.transactions.each { |transaction|
+                puts payee.transactions.length
+                transactions = payee.transactions.clone.delete_if { |x| x.date < from }
+                puts transactions.length
+                transactions.each { |transaction|
                   li do
                     span transaction.date
                     span transaction.amount
@@ -425,7 +437,13 @@ module HSBCChart
       end
     end
 
-    def Statement.categories(filename="categories.html")
+    def Statement.categories(filename="categories.html", from=nil)
+      if from == nil
+        from = DateTime.now
+        puts from.year
+        puts from.month
+        from = Date.new(from.year, from.month - 1, from.day)
+      end
       mab = Markaby::Builder.new
       mab.html do
         head { title "Category Summary" }
@@ -437,7 +455,8 @@ module HSBCChart
               amount = category.total_negative * -1
               li "#{category.name} #{amount}"
               ul do
-                category.transactions.each { |transaction|
+                transactions = category.transactions.clone.delete_if { |x| x.date < from }
+                transactions.each { |transaction|
                   li do
                     span transaction.date
                     span transaction.amount
