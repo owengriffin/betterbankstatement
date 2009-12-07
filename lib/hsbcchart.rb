@@ -41,8 +41,8 @@ module HSBCChart
       end
     end
 
-    def get_description(description)
-      description = description.gsub(/(JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[0-9]{2}/, '')
+    def strip_datetime(description)
+      description = description.gsub(/(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[0-9]{2}/, '')
       return description.gsub(/@[0-9]{2}:[0-9]{2}/, '')
     end
 
@@ -52,7 +52,7 @@ module HSBCChart
         if row[3] != nil
           transaction = Transaction.new
           transaction.account = account if account != nil
-          transaction.description = get_description(row[3])
+          transaction.description = strip_datetime(row[3])
           transaction.location = Location.create(get_location(transaction.description))
           transaction.payee = Payee.create(get_payee(transaction.description))
           transaction.payee.transactions << transaction
@@ -111,7 +111,8 @@ module HSBCChart
           elsif content =~ /^T/
             transaction.amount = get_amount(content[1..content.length])
           elsif content =~ /^P/
-            transaction.payee = Payee.create(get_payee(content[1..content.length]))
+            transaction.description = strip_datetime(content[1..content.length])
+            transaction.payee = Payee.create(get_payee(transaction.description))
             transaction.payee.transactions << transaction
           elsif content =~ /^\^/
             # Ignore lines beginning with ^
@@ -394,6 +395,36 @@ module HSBCChart
   end
 
   class Statement
+
+    def Statement.payees(filename="payees.html")
+      mab = Markaby::Builder.new
+      mab.html do
+        head { title "Category Summary" }
+        body do
+          h1 "Payee Summary"
+          ul do
+            payees = HSBCChart::Payee.all
+            payees.each { |payee|
+              li payee.name
+              ul do
+                payee.transactions.each { |transaction|
+                  li do
+                    span transaction.date
+                    span transaction.amount
+                    span transaction.description
+                  end
+                }
+              end
+            }
+          end
+        end
+      end
+
+      File.open(filename, "w") do |file|
+        file.write(mab.to_s)
+      end
+    end
+
     def Statement.categories(filename="categories.html")
       mab = Markaby::Builder.new
       mab.html do
@@ -407,7 +438,11 @@ module HSBCChart
               li "#{category.name} #{amount}"
               ul do
                 category.transactions.each { |transaction|
-                  li "#{transaction.date} #{transaction.amount} #{transaction.description}"
+                  li do
+                    span transaction.date
+                    span transaction.amount
+                    span transaction.description
+                  end
                 }
               end
             }
