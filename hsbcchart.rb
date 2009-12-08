@@ -51,6 +51,7 @@ HSBCChart::Payee.categorize_all
 #   puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
 # }
 
-HSBCChart::Statement.css
-HSBCChart::Statement.categories
-HSBCChart::Statement.payees
+HSBCChart::Graph.category_timeline
+
+# HSBCChart::Statement.categories
+# HSBCChart::Statement.payees

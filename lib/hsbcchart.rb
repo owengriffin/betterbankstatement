@@ -250,6 +250,17 @@ module HSBCChart
       return total * -1
     end
 
+    def transactions_between(from, to)
+      transactions = []
+      @transactions.each { |transaction|
+        if transaction.date != nil and transaction.date > from and transaction.date <= to
+          #puts "#{transaction.date} is between #{from} and #{to}"
+          transactions << transaction
+        end
+      }
+      return transactions
+    end
+
     @@payees = []
     @@filters = []
     def Payee.create(name)
@@ -340,6 +351,19 @@ module HSBCChart
       }
       return total
     end
+
+    # Return the total amount of money for this Category on a
+    # particular date
+    def total_between(from, to)
+      total = 0
+      @payees.each { |payee|
+        payee.transactions_between(from, to).each {|transaction|
+          total = total + transaction.amount
+        }
+      }
+      puts "Total between #{from} and #{to} is #{total}"
+      return total;
+    end
     
     @@categories = []
     def Category.get_by_name(name)
@@ -395,6 +419,53 @@ module HSBCChart
   end
 
   class Graph
+
+    def Graph.safe_name(name)
+      return name.gsub(/ & /, 'and')
+    end
+
+    def Graph.category_timeline(filename="timeline.png")
+      now = DateTime.now
+      from = Date.new(now.year, now.month - 1, now.day)
+      # Calculate which categories to plot in the timeline
+
+      chart = GoogleChart::LineChart.new('320x200', "Line Chart", false)
+      min = 0
+      max = 0
+      Category.all.each { |category|
+        if category.total_between(from, now) != 0
+          data = []
+          (from..now).each {|date| 
+            total = category.total_between(date, date + (60*60*24)) 
+            puts "category.total_between = #{total}"
+            data << total *-1
+          }
+          puts data.inspect
+          data.each { |d| 
+            if d > max
+              max = d
+            end
+            if d < min
+              min = d
+            end
+          }
+          chart.data category.name, data
+        end
+      }
+      chart.axis :y, :range => [min,max], :color => 'ff00ff', :font_size => 16, :alignment => :center
+      chart.axis :x, :range => [from, now], :color => '00ffff', :font_size => 16, :alignment => :center
+
+      puts chart.to_escaped_url
+      
+      uri = URI.parse(chart.to_escaped_url)
+      Net::HTTP.start(uri.host) { |http|
+        resp = http.get("#{uri.path}?#{uri.query}")
+        open(filename, "wb") { |file|
+          file.write(resp.body)
+        }
+      }
+    end
+
     def Graph.category_piechart(filename="piechart.png")
       GoogleChart::PieChart.new('680x400', "Analysis of spending",false) do |chart|
         HSBCChart::Category.all.each { |category|
@@ -446,9 +517,9 @@ module HSBCChart
         payees.each { |payee|
           amount = payee.total_credit
           puts "#{payee.name} (£#{amount})"
-          chart.data "#{payee.name} (£#{amount})", amount if amount > 0
+          chart.data "#{Graph.safe_name(payee.name)} (£#{amount})", amount if amount > 0
         }
-        puts chart.to_url
+
         uri = URI.parse(chart.to_escaped_url)
         Net::HTTP.start(uri.host) { |http|
           resp = http.get("#{uri.path}?#{uri.query}")
@@ -472,7 +543,7 @@ module HSBCChart
         payees.each { |payee|
           amount = payee.total_debit
           puts "#{payee.name} (£#{amount})"
-          chart.data "#{payee.name} (£#{amount})", amount if amount > 0
+          chart.data "#{Graph.safe_name(payee.name)} (£#{amount})", amount if amount > 0
         }
         puts chart.to_url
         uri = URI.parse(chart.to_escaped_url)
@@ -548,6 +619,7 @@ module HSBCChart
         from = DateTime.now
         from = Date.new(from.year, from.month - 1, from.day)
       end
+
       mab = Markaby::Builder.new
       mab.html do
         head { title "Category Summary" }
