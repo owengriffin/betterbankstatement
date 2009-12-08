@@ -445,6 +445,33 @@ module HSBCChart
       GoogleChart::PieChart.new('680x400', "Creditors",false) do |chart|
         payees.each { |payee|
           amount = payee.total_credit
+          puts "#{payee.name} (£#{amount})"
+          chart.data "#{payee.name} (£#{amount})", amount if amount > 0
+        }
+        puts chart.to_url
+        uri = URI.parse(chart.to_escaped_url)
+        Net::HTTP.start(uri.host) { |http|
+          resp = http.get("#{uri.path}?#{uri.query}")
+          open(filename, "wb") { |file|
+            file.write(resp.body)
+          }
+        }
+      end
+    end
+    def Graph.debitors(filename="piechart.png", date=nil)
+      payees = []
+      if date == nil
+        payees = Payee.all
+      else
+        payees = Payee.after(date)
+      end
+      puts payees
+      payees = payees.clone.delete_if {|payee| payee.total_debit <= 0 }
+      puts payees
+      GoogleChart::PieChart.new('680x400', "Debitors",false) do |chart|
+        payees.each { |payee|
+          amount = payee.total_debit
+          puts "#{payee.name} (£#{amount})"
           chart.data "#{payee.name} (£#{amount})", amount if amount > 0
         }
         puts chart.to_url
@@ -479,6 +506,7 @@ module HSBCChart
         from = Date.new(from.year, from.month - 1, from.day)
       end
       Graph.creditors("creditors.png", from)
+      Graph.debitors("debitors.png", from)
       mab = Markaby::Builder.new
       mab.html do
         head do
@@ -490,6 +518,7 @@ module HSBCChart
         body do
           h1 "Payee Summary"
           img :src => "creditors.png"
+          img :src => "debitors.png"
           ul do
             payees = HSBCChart::Payee.after(from)
             payees.each { |payee|
