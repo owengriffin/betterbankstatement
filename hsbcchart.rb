@@ -5,11 +5,11 @@ require 'lib/openstreetmap.rb'
 
 parser = HSBCChart::Parser.new
 transactions=[]
-# Dir.foreach("statements") { |filename|
-#   if filename =~ /.*\.txt$/
-#     transactions = transactions + parser.open("statements/#{filename}")
-#   end
-# }
+Dir.foreach("statements") { |filename|
+  if filename =~ /.*\.txt$/
+    transactions = transactions + parser.open("statements/#{filename}")
+  end
+}
 
 # Dir.foreach("bankaccount") { |filename|
 #    if filename =~ /.*\.csv$/

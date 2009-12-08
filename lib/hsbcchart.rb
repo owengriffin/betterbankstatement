@@ -362,7 +362,7 @@ module HSBCChart
           total = total + transaction.amount
         }
       }
-      puts "Total between #{from} and #{to} is #{total}"
+      #puts "Total between #{from} and #{to} is #{total}"
       return total;
     end
     
@@ -449,14 +449,17 @@ module HSBCChart
       min = 0
       max = 0
       index = 0
+      colours=['660000', '006600', '000066', '660033', '336600', '003366', '660066', '666600', '006666', '660000', '006600', '000066', '660033', '336600', '003366', '660066', '666600', '006666']
       Category.all.each { |category|
         if category.total_between(from, now) != 0
           data = []
-          (now..from).each { |date| 
-            total = category.total_between(date, date + (60*60*24)) 
-            puts "category.total_between = #{total}"
-            data << total *-1
+          (from..now).each { |date| 
+            
+            total = category.total_between(date - (60*60*24), date ) 
+            #puts "category.total_between #{date} = #{total}"
+            data << total * -1
           }
+          puts data.inspect
           data.each { |d| 
             if d > max
               max = d
@@ -465,17 +468,17 @@ module HSBCChart
               min = d
             end
           }
-          puts data.inspect
-          chart["elements"].push({ "type"=> "line", "width"=> 1, "dot-style"=> { "type"=> "hollow-dot" }, "colour"=> "#838A96", "fill"=> "#E01B49", "fill-alpha"=> 0.4, "values" => data})
-#          chart["elements"][0]["values"]= data
-          
+          chart["elements"].push({ "type"=> "line", "width"=> 1, "colour"=> '#' + colours[index], "values" => data, "text" => category.name})          
+          index = index + 1
         end
       }
       labels = []
       (from..now).each { |date|
-        labels << "#{date}"
+        labels << date.strftime('%d-%m') #date.strftime('%d')
       }
-      chart["x_axis"] = { "labels"=> labels, "steps"=> 7 } 
+      puts labels.inspect
+      chart["x_axis"] = { "labels"=> { "labels" => labels, "rotate" => 270 } , "steps"=> 7, "stoke" => 1 } 
+      chart["x_legend"] = { "text" => "#{from.strftime('%d-%m-%Y')} to #{now.strftime('%d-%m-%Y')}", "style" => {"font-size" => "20px", "color" => "#778877" } }
       chart["y_axis"] = { "min"=> min, "max"=> max, "steps"=> 10, "labels"=> nil, "offset"=> 0 }
       return chart.to_json
     end
@@ -704,7 +707,7 @@ module HSBCChart
           script :type => "text/javascript", :src => "json.js"
           script :type => "text/javascript", :src => "swfobject.js"
           script :type => "text/javascript" do
-            'swfobject.embedSWF("open-flash-chart.swf", "my_chart", "350", "200", "9.0.0");'
+            'swfobject.embedSWF("open-flash-chart.swf", "my_chart", "650", "500", "9.0.0");'
           end
           script :type => "text/javascript" do
             '
