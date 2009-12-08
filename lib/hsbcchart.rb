@@ -452,7 +452,7 @@ module HSBCChart
       Category.all.each { |category|
         if category.total_between(from, now) != 0
           data = []
-          (from..now).each { |date| 
+          (now..from).each { |date| 
             total = category.total_between(date, date + (60*60*24)) 
             puts "category.total_between = #{total}"
             data << total *-1
