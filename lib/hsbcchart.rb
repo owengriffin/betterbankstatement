@@ -12,6 +12,7 @@ require 'google_chart'
 require 'markaby'
 require 'hpricot'
 require 'csv'
+require 'stylish'
 
 module HSBCChart
 
@@ -31,13 +32,11 @@ module HSBCChart
       return s[0..s.length / 2].join " "
     end
 
-    def get_amount(amount)
+    def get_amount(amount, invert=false)
       if amount =~ /^[0-9\.]+CR$/
         return amount[0...amount.length-2].to_f
-      elsif amount =~ /^-/
-        return amount.to_f
       else
-        return amount.to_f * -1
+        return invert ? amount.to_f * -1 : amount.to_f
       end
     end
 
@@ -148,7 +147,7 @@ module HSBCChart
               transaction.payee.transactions << transaction
               transaction.date = Date.strptime(match[2], '%d %b %y')
               transaction.received = Date.strptime(match[1], '%d %b %y')
-              transaction.amount = get_amount(match[4])
+              transaction.amount = get_amount(match[4], true)
               transaction.account = account if account != nil
               #puts transaction.inspect
             else
@@ -234,6 +233,23 @@ module HSBCChart
       @categories = []
     end
 
+    def total_credit
+      total = 0
+      self.transactions.each { |transaction|
+        total += transaction.amount if transaction.amount > 0
+      }
+      puts "Total credit for #{@name} = #{total}"
+      return total
+    end
+    
+    def total_debit
+      total = 0
+      self.transactions.each { |transaction|
+        total += transaction.amount if transaction.amount < 0
+      }
+      return total * -1
+    end
+
     @@payees = []
     @@filters = []
     def Payee.create(name)
@@ -276,9 +292,19 @@ module HSBCChart
       return @@payees
     end
 
-    def Payee.after(date)
-      @@payees.each { |payee|
+    def Payee.after(date, set=nil)
+      payees = []
+      set = @@payees if set == nil
+      set.each { |payee|
+        transactions = payee.transactions.clone.delete_if { |transaction| transaction.date < date }
+        payees << payee if transactions.length > 0
       }
+      return payees
+    end
+
+    def Payee.last_month
+      now = DateTime.now
+      return Payee.after(Date.new(now.year, now.month - 1, now.day))
     end
   end
 
@@ -334,6 +360,15 @@ module HSBCChart
     
     def Category.all
       return @@categories
+    end
+
+    def Category.after(date)
+      categories = []
+      @@categories.each { |category|
+        payees = Payee.after(date, category.payees) 
+        categories << category if payees.length > 0
+      }
+      return categories
     end
     
     def Category.total_amount
@@ -397,33 +432,75 @@ module HSBCChart
         }
       end
     end
+    def Graph.creditors(filename="piechart.png", date=nil)
+      payees = []
+      if date == nil
+        payees = Payee.all
+      else
+        payees = Payee.after(date)
+      end
+      puts payees
+      payees = payees.clone.delete_if {|payee| payee.total_credit <= 0 }
+      puts payees
+      GoogleChart::PieChart.new('680x400', "Creditors",false) do |chart|
+        payees.each { |payee|
+          amount = payee.total_credit
+          chart.data "#{payee.name} (£#{amount})", amount if amount > 0
+        }
+        puts chart.to_url
+        uri = URI.parse(chart.to_escaped_url)
+        Net::HTTP.start(uri.host) { |http|
+          resp = http.get("#{uri.path}?#{uri.query}")
+          open(filename, "wb") { |file|
+            file.write(resp.body)
+          }
+        }
+      end
+    end
   end
 
   class Statement
+
+    def Statement.css
+      style = Stylish.generate do
+        p :line_height => 1.5
+        a :text_transform => "uppercase"
+        rule "ul li" do
+          span :padding => 1.5
+        end
+        rule "ul li span.date", :font_size => "0.8em"
+      end
+      return style.to_s
+    end
 
     def Statement.payees(filename="payees.html", from=nil)
       if from == nil
         from = DateTime.now
         from = Date.new(from.year, from.month - 1, from.day)
       end
+      Graph.creditors("creditors.png", from)
       mab = Markaby::Builder.new
       mab.html do
-        head { title "Category Summary" }
+        head do
+          title "Category Summary" 
+          style :type => "text/css" do
+            Statement.css
+          end
+        end
         body do
           h1 "Payee Summary"
+          img :src => "creditors.png"
           ul do
-            payees = HSBCChart::Payee.all
+            payees = HSBCChart::Payee.after(from)
             payees.each { |payee|
               li payee.name
               ul do
-                puts payee.transactions.length
                 transactions = payee.transactions.clone.delete_if { |x| x.date < from }
-                puts transactions.length
                 transactions.each { |transaction|
                   li do
-                    span transaction.date
-                    span transaction.amount
-                    span transaction.description
+                    span.date transaction.date
+                    span.amount "£#{transaction.amount}"
+                    span.description transaction.description
                   end
                 }
               end
@@ -440,8 +517,6 @@ module HSBCChart
     def Statement.categories(filename="categories.html", from=nil)
       if from == nil
         from = DateTime.now
-        puts from.year
-        puts from.month
         from = Date.new(from.year, from.month - 1, from.day)
       end
       mab = Markaby::Builder.new
@@ -450,7 +525,7 @@ module HSBCChart
         body do
           h1 "Category Summary"
           ul do
-            categories = HSBCChart::Category.all.sort { |x,y| x.total_negative <=> y.total_negative}
+            categories = HSBCChart::Category.after(from).sort { |x,y| x.total_negative <=> y.total_negative}
             categories.each { |category|
               amount = category.total_negative * -1
               li "#{category.name} #{amount}"
