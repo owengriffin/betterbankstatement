@@ -46,12 +46,11 @@ HSBCChart::Payee.categorize_all
 #   puts "Location #{location.name}"
 # }
 
-# HSBCChart::Category.all.each { |category|
-#   #puts "Category #{category.name}"
-#   puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
-# }
+HSBCChart::Category.all.each { |category|
+  puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
+}
 
-HSBCChart::Graph.category_timeline
+#HSBCChart::Graph.category_timeline
 
-# HSBCChart::Statement.categories
+ HSBCChart::Statement.categories
 # HSBCChart::Statement.payees

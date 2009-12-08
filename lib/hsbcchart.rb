@@ -13,6 +13,7 @@ require 'markaby'
 require 'hpricot'
 require 'csv'
 require 'stylish'
+require 'json'
 
 module HSBCChart
 
@@ -424,10 +425,85 @@ module HSBCChart
       return name.gsub(/ & /, 'and')
     end
 
-    def Graph.category_timeline(filename="timeline.png")
+    def Graph.category_timeline2
+      chart = Hash.new
+#       chart["title"]={'text' => 'Test'}
+# chart["elements"]={"type" => "hbar", "values" => [{"right"=>10},{"right"=>15},{"left"=>13,"right"=>17}]}
+# chart["x_axis"]={"min"=>0, "max"=>20, "offset"=>0, "labels"=> ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v"] }
+# chart["y_axis"]={ "stroke"=> 14,
+#     "tick_length"=>30,
+#     "colour"=>      "#d09090",
+#     "grid_colour"=> "#00ff00",
+#     "offset"=>      1,
+#   "labels"=>      ["slashdot.org","digg.com","reddit.com"]}
+
+      chart["elements"] = []
+
+      chart["title"] = { "text"=> "Area Chart" }
+
+
+
       now = DateTime.now
       from = Date.new(now.year, now.month - 1, now.day)
+
+      min = 0
+      max = 0
+      index = 0
+      Category.all.each { |category|
+        if category.total_between(from, now) != 0
+          data = []
+          (from..now).each { |date| 
+            total = category.total_between(date, date + (60*60*24)) 
+            puts "category.total_between = #{total}"
+            data << total *-1
+          }
+          data.each { |d| 
+            if d > max
+              max = d
+            end
+            if d < min
+              min = d
+            end
+          }
+          puts data.inspect
+          chart["elements"].push({ "type"=> "line", "width"=> 1, "dot-style"=> { "type"=> "hollow-dot" }, "colour"=> "#838A96", "fill"=> "#E01B49", "fill-alpha"=> 0.4, "values" => data})
+#          chart["elements"][0]["values"]= data
+          
+        end
+      }
+      labels = []
+      (from..now).each { |date|
+        labels << "#{date}"
+      }
+      chart["x_axis"] = { "labels"=> labels, "steps"=> 7 } 
+      chart["y_axis"] = { "min"=> min, "max"=> max, "steps"=> 10, "labels"=> nil, "offset"=> 0 }
+      return chart.to_json
+    end
+
+    def Graph.category_timeline()
+      now = DateTime.now
+      from = Date.new(now.year, now.month - 1, now.day)
+
+#       labels = []
+#       (from..now).each { |date|
+#         labels << date
+#       }
+
+# chart = Hash.new
+# chart["title"]={'text' => 'Test'}
+# chart["elements"]={"type" => "hbar", "values" => [{"right"=>10},{"right"=>15},{"left"=>13,"right"=>17}]}
+# chart["x_axis"]={"min"=>0, "max"=>(from..now).length, "offset"=>0, "labels"=> labels }
+# chart["y_axis"]={ "stroke"=> 14,
+#     "tick_length"=>30,
+#     "colour"=>      "#d09090",
+#     "grid_colour"=> "#00ff00",
+#     "offset"=>      1,
+#   "labels"=>      ["slashdot.org","digg.com","reddit.com"]}
+
+
       # Calculate which categories to plot in the timeline
+
+
 
       chart = GoogleChart::LineChart.new('320x200', "Line Chart", false)
       min = 0
@@ -625,6 +701,37 @@ module HSBCChart
         head { title "Category Summary" }
         body do
           h1 "Category Summary"
+          script :type => "text/javascript", :src => "json.js"
+          script :type => "text/javascript", :src => "swfobject.js"
+          script :type => "text/javascript" do
+            'swfobject.embedSWF("open-flash-chart.swf", "my_chart", "350", "200", "9.0.0");'
+          end
+          script :type => "text/javascript" do
+            '
+function ofc_ready()
+{
+	//alert("ofc_ready");
+}
+
+function findSWF(movieName) {
+  if (navigator.appName.indexOf("Microsoft")!= -1) {
+    return window[movieName];
+  } else {
+    return document[movieName];
+  }
+}
+'
+          end
+          script :type => "text/javascript" do
+            'function open_flash_chart_data() {
+//alert("Reading data"); 
+var data = ' + HSBCChart::Graph.category_timeline2 + ';
+var retval =  JSON.stringify(data);
+//alert(retval);
+return retval;
+ }'
+          end
+          div :id => "my_chart"
           ul do
             categories = HSBCChart::Category.after(from).sort { |x,y| x.total_negative <=> y.total_negative}
             categories.each { |category|
