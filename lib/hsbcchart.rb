@@ -362,7 +362,7 @@ module HSBCChart
           total = total + transaction.amount
         }
       }
-      #puts "Total between #{from} and #{to} is #{total}"
+      puts "Total between #{from} and #{to} is #{total}"
       return total;
     end
     
@@ -455,7 +455,7 @@ module HSBCChart
           data = []
           (from..now).each { |date| 
             
-            total = category.total_between(date - (60*60*24), date ) 
+            total = category.total_between(date , date + 1 ) 
             #puts "category.total_between #{date} = #{total}"
             data << total * -1
           }
