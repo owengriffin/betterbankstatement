@@ -362,7 +362,6 @@ module HSBCChart
           total = total + transaction.amount
         }
       }
-      puts "Total between #{from} and #{to} is #{total}"
       return total;
     end
     
@@ -425,27 +424,12 @@ module HSBCChart
       return name.gsub(/ & /, 'and')
     end
 
-    def Graph.category_timeline2
-      chart = Hash.new
-#       chart["title"]={'text' => 'Test'}
-# chart["elements"]={"type" => "hbar", "values" => [{"right"=>10},{"right"=>15},{"left"=>13,"right"=>17}]}
-# chart["x_axis"]={"min"=>0, "max"=>20, "offset"=>0, "labels"=> ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v"] }
-# chart["y_axis"]={ "stroke"=> 14,
-#     "tick_length"=>30,
-#     "colour"=>      "#d09090",
-#     "grid_colour"=> "#00ff00",
-#     "offset"=>      1,
-#   "labels"=>      ["slashdot.org","digg.com","reddit.com"]}
-
-      chart["elements"] = []
-
-      chart["title"] = { "text"=> "Area Chart" }
-
-
-
+    def Graph.category_timeline
       now = DateTime.now
       from = Date.new(now.year, now.month - 1, now.day)
-
+      chart = Hash.new
+      chart["elements"] = []
+      chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
       min = 0
       max = 0
       index = 0
@@ -453,96 +437,32 @@ module HSBCChart
       Category.all.each { |category|
         if category.total_between(from, now) != 0
           data = []
+          total = 0
           (from..now).each { |date| 
-            
-            total = category.total_between(date , date + 1 ) 
-            #puts "category.total_between #{date} = #{total}"
-            data << total * -1
-          }
-          puts data.inspect
-          data.each { |d| 
-            if d > max
-              max = d
+            total = total + category.total_between(date , date + 1 ) 
+            if total > max
+              max = total
             end
-            if d < min
-              min = d
+            if total < min
+              min = total
             end
+            data << total
           }
-          chart["elements"].push({ "type"=> "line", "width"=> 1, "colour"=> '#' + colours[index], "values" => data, "text" => category.name})          
+          chart["elements"].push({ "type"=> "line", "width"=> 2, "colour"=> '#' + colours[index], "values" => data, "text" => category.name})          
           index = index + 1
         end
       }
       labels = []
       (from..now).each { |date|
-        labels << date.strftime('%d-%m') #date.strftime('%d')
+        labels << date.strftime('%d-%m')
       }
-      puts labels.inspect
+      min = -250 if min < -250
+      max = 250 if max > 250
       chart["x_axis"] = { "labels"=> { "labels" => labels, "rotate" => 270 } , "steps"=> 7, "stoke" => 1 } 
       chart["x_legend"] = { "text" => "#{from.strftime('%d-%m-%Y')} to #{now.strftime('%d-%m-%Y')}", "style" => {"font-size" => "20px", "color" => "#778877" } }
-      chart["y_axis"] = { "min"=> min, "max"=> max, "steps"=> 10, "labels"=> nil, "offset"=> 0 }
+      chart["y_axis"] = { "min" => min, "max" => max, "steps"=> 10, "labels"=> nil, "offset"=> 0 }
+      chart["bg_colour"] = "#FFFFFF"
       return chart.to_json
-    end
-
-    def Graph.category_timeline()
-      now = DateTime.now
-      from = Date.new(now.year, now.month - 1, now.day)
-
-#       labels = []
-#       (from..now).each { |date|
-#         labels << date
-#       }
-
-# chart = Hash.new
-# chart["title"]={'text' => 'Test'}
-# chart["elements"]={"type" => "hbar", "values" => [{"right"=>10},{"right"=>15},{"left"=>13,"right"=>17}]}
-# chart["x_axis"]={"min"=>0, "max"=>(from..now).length, "offset"=>0, "labels"=> labels }
-# chart["y_axis"]={ "stroke"=> 14,
-#     "tick_length"=>30,
-#     "colour"=>      "#d09090",
-#     "grid_colour"=> "#00ff00",
-#     "offset"=>      1,
-#   "labels"=>      ["slashdot.org","digg.com","reddit.com"]}
-
-
-      # Calculate which categories to plot in the timeline
-
-
-
-      chart = GoogleChart::LineChart.new('320x200', "Line Chart", false)
-      min = 0
-      max = 0
-      Category.all.each { |category|
-        if category.total_between(from, now) != 0
-          data = []
-          (from..now).each {|date| 
-            total = category.total_between(date, date + (60*60*24)) 
-            puts "category.total_between = #{total}"
-            data << total *-1
-          }
-          puts data.inspect
-          data.each { |d| 
-            if d > max
-              max = d
-            end
-            if d < min
-              min = d
-            end
-          }
-          chart.data category.name, data
-        end
-      }
-      chart.axis :y, :range => [min,max], :color => 'ff00ff', :font_size => 16, :alignment => :center
-      chart.axis :x, :range => [from, now], :color => '00ffff', :font_size => 16, :alignment => :center
-
-      puts chart.to_escaped_url
-      
-      uri = URI.parse(chart.to_escaped_url)
-      Net::HTTP.start(uri.host) { |http|
-        resp = http.get("#{uri.path}?#{uri.query}")
-        open(filename, "wb") { |file|
-          file.write(resp.body)
-        }
-      }
     end
 
     def Graph.category_piechart(filename="piechart.png")
@@ -728,7 +648,7 @@ function findSWF(movieName) {
           script :type => "text/javascript" do
             'function open_flash_chart_data() {
 //alert("Reading data"); 
-var data = ' + HSBCChart::Graph.category_timeline2 + ';
+var data = ' + HSBCChart::Graph.category_timeline + ';
 var retval =  JSON.stringify(data);
 //alert(retval);
 return retval;
