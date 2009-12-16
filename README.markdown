@@ -20,3 +20,9 @@ sudo gem install mechanize hpricot gchartrb markaby httparty stylish
 
 sudo apt-get install libglib2.0-dev
 sudo gem install rpeg-markdown 
+
+==Usage==
+
+===Filters===
+
+The filters.yaml file contains a list of regular expressions which are run on the description of all imported transactions. If one of the regular expressions matches then it is placed in the specified category.

@@ -50,7 +50,7 @@ module HSBCChart
       transactions = []
       CSV.open(filename, "r", ';') do |row|
         if row[3] != nil
-          transaction = Transaction.new
+          transaction = Transaction.create
           transaction.account = account if account != nil
           transaction.description = strip_datetime(row[3])
           transaction.location = Location.create(get_location(transaction.description))
@@ -87,7 +87,7 @@ module HSBCChart
               account = account_entry["account"]
             end
           }
-          transaction = Transaction.new
+          transaction = Transaction.create
           transaction.account = account if account != nil          
           transaction.amount = transaction_element['amount']
           
@@ -105,7 +105,7 @@ module HSBCChart
           if content =~ /^D/
             # Date, so new transaction
             transactions << transaction if transaction != nil
-            transaction = Transaction.new
+            transaction = Transaction.create
             transaction.account = account if account != nil
             transaction.date = Date.strptime(content[1..content.length], '%d/%m/%Y')
           elsif content =~ /^T/
@@ -141,7 +141,7 @@ module HSBCChart
           if content =~ Parser::STATEMENT_LINE_REGEXP
             match = content.match(Parser::STATEMENT_LINE_REGEXP)
             if match
-              transaction = Transaction.new
+              transaction = Transaction.create
               transaction.description = match[3].gsub(/\s+$/,'')
               transaction.location = Location.create(get_location(transaction.description))
               transaction.payee = Payee.create(get_payee(transaction.description))
@@ -416,30 +416,47 @@ module HSBCChart
     attr_accessor :location
     attr_accessor :payee
     attr_accessor :account
+
+    @@transactions = []
+
+    def Transaction.create
+      transaction = Transaction.new
+      @@transactions << transaction
+      return transaction
+    end
+
+    # Return the total number of transactions between two dates
+    def Transaction.total_between(from, to)
+      total = 0
+      @@transactions.each { |transaction|
+        total = total + 1 if transaction.date > from and transaction.date < to
+      }
+      return total
+    end
+
   end
 
   class Graph
+
+    COLOURS = ['FF0000', 'FE9A2E', 'FFFF00', '80FF00', '00FF00', '00FF80', '2EFEF7', '0080FF', '0000FF', '8000FF', 'FF00FF', 'FF0080']
 
     def Graph.safe_name(name)
       return name.gsub(/ & /, 'and')
     end
 
-    def Graph.category_timeline
-      now = DateTime.now
-      from = Date.new(now.year, now.month - 1, now.day)
+    def Graph.category_timeline(from, now)
       chart = Hash.new
       chart["elements"] = []
       chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
       min = 0
       max = 0
       index = 0
-      colours=['660000', '006600', '000066', '660033', '336600', '003366', '660066', '666600', '006666', '660000', '006600', '000066', '660033', '336600', '003366', '660066', '666600', '006666']
       Category.all.each { |category|
         if category.total_between(from, now) != 0
           data = []
           total = 0
           (from..now).each { |date| 
-            total = total + category.total_between(date , date + 1 ) 
+            total = total + category.total_between(date , date + 1 )
             if total > max
               max = total
             end
@@ -448,7 +465,7 @@ module HSBCChart
             end
             data << total
           }
-          chart["elements"].push({ "type"=> "line", "width"=> 2, "colour"=> '#' + colours[index], "values" => data, "text" => category.name})          
+          chart["elements"].push({ "type"=> "line", "width"=> 2, "colour"=> '#' + COLOURS[index], "values" => data, "text" => category.name})
           index = index + 1
         end
       }
@@ -456,40 +473,47 @@ module HSBCChart
       (from..now).each { |date|
         labels << date.strftime('%d-%m')
       }
-      min = -250 if min < -250
-      max = 250 if max > 250
-      chart["x_axis"] = { "labels"=> { "labels" => labels, "rotate" => 270 } , "steps"=> 7, "stoke" => 1 } 
+      chart["x_axis"] = { "labels"=> { "labels" => labels, "rotate" => 270 } , "steps"=> 7, "stoke" => 1, "grid-colour" => "#DDDDDD", "colour" => "#AFAFAF" }
       chart["x_legend"] = { "text" => "#{from.strftime('%d-%m-%Y')} to #{now.strftime('%d-%m-%Y')}", "style" => {"font-size" => "20px", "color" => "#778877" } }
-      chart["y_axis"] = { "min" => min, "max" => max, "steps"=> 10, "labels"=> nil, "offset"=> 0 }
+      chart["y_axis"] = { "min" => min, "max" => max, "steps"=> (max - min) / 10, "labels"=> nil, "offset"=> 0, "grid-colour" => "#DDDDDD", "colour" => "#AFAFAF" }
       chart["bg_colour"] = "#FFFFFF"
       return chart.to_json
     end
 
-    def Graph.category_piechart(filename="piechart.png")
-      GoogleChart::PieChart.new('680x400', "Analysis of spending",false) do |chart|
-        HSBCChart::Category.all.each { |category|
-          amount = category.total_negative * -1
-          chart.data "#{category.name} (£#{amount})", amount if amount > 0
-        }
-        
-        uri = URI.parse(chart.to_escaped_url)
-        Net::HTTP.start(uri.host) { |http|
-          resp = http.get("#{uri.path}?#{uri.query}")
-          open(filename, "wb") { |file|
-            file.write(resp.body)
-          }
-        }
-      end
+    def Graph.category_piechart(from, now)
+      chart = Hash.new
+      chart["bg_colour"] = "#FFFFFF"
+      chart["elements"] = []
+      chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
+      chart["x_axis"] = nil
+      element = Hash.new
+      element["type"] = "pie"
+      element["alpha"] = 0.6
+      element["start-angle"] = 35
+      element["animate"] = { "type" => "fade" }
+      element["tip"] = "£#val# of £#total#"
+      
+      element["colours"] = COLOURS
+      element["values"] = []
+      HSBCChart::Category.all.each { |category|
+        if category.total_between(from, now) != 0
+          amount = category.total_between(from, now)
+          amount = amount * -1 if amount < 0
+          element["values"] << { "value" => amount, "label" => "#{category.name} (£#{amount})" }
+        end
+      }
+      chart["elements"] << element
+      return chart.to_json
     end
+
     def Graph.category_barchart(filename="barchart.png")
-      colours=['660000', '006600', '000066', '660033', '336600', '003366', '660066', '666600', '006666']
       GoogleChart::BarChart.new('680x400', "Analysis of spending", :vertical, false) do |chart|
         colour_index = 0
         # Sort all the categories by their total negative transactions
         categories = Category.all.sort { |x,y| x.total_negative <=> y.total_negative}
         categories.each { |category|
           amount = category.total_negative * -1
-          chart.data "#{category.name} (£#{amount})", [amount], colours[colour_index] if amount > 0
+          chart.data "#{category.name} (£#{amount})", [amount], COLOURS[colour_index] if amount > 0
           colour_index = colour_index + 1
         }
         
@@ -613,62 +637,107 @@ module HSBCChart
       end
     end
 
-    def Statement.categories(filename="categories.html", from=nil)
+    def Statement.last_month(now=nil)
+      now = DateTime.now if now == nil
+      return Date.new(now.year, now.month - 1, now.day)
+    end
+
+    def Statement.jump_back_month(date=nil)
+      date = DateTime.now if date == nil
+      year = date.year
+      month = date.month - 1
+      if month <= 0
+        month = 1
+        year = year - 1
+      end
+      return Date.new(year, month, date.day)
+    end
+
+    def Statement.all_categories(filename="categories.html")
+      monthly_filenames = []
+      to = DateTime.now
+      from = Date.new(to.year, to.month - 1, to.day)
+      total = Transaction.total_between(from, to)
+      while total > 0
+        monthly_filename = "categories#{from.strftime('%Y%m%d')}_#{to.strftime('%Y%m%d')}.html"
+        monthly_filenames << monthly_filename
+        Statement.categories(monthly_filename, from, to)
+        to = from
+        from = jump_back_month(from)
+        total = Transaction.total_between(from, to)
+      end
+      mab = Markaby::Builder.new
+      mab.html do
+        head {
+          title "Category breakdown"
+        }
+        body do
+          h1 "Category breakdown"
+          ul do
+            monthly_filenames.each { |monthly_filename|
+              li do
+                a :href => monthly_filename do
+                  monthly_filename
+                end
+              end
+            }
+          end
+        end
+      end
+      File.open(filename, "w") do |file|
+        file.write(mab.to_s)
+      end
+    end
+
+    def Statement.categories(filename="categories.html", from=nil, to=nil)
       if from == nil
-        from = DateTime.now
-        from = Date.new(from.year, from.month - 1, from.day)
+        from = Statement.last_month
+      end
+      if to == nil
+        to = DateTime.now
       end
 
       mab = Markaby::Builder.new
       mab.html do
-        head { title "Category Summary" }
+        head { title "Category from #{from.strftime('%d-%m-%Y')} to #{to.strftime('%d-%m-%Y')}" }
         body do
-          h1 "Category Summary"
-          script :type => "text/javascript", :src => "json.js"
           script :type => "text/javascript", :src => "swfobject.js"
           script :type => "text/javascript" do
-            'swfobject.embedSWF("open-flash-chart.swf", "my_chart", "650", "500", "9.0.0");'
+            '
+swfobject.embedSWF("open-flash-chart.swf", "category_timeline", "650", "500", "9.0.0", "expressInstall.swf", {"get-data":"category_timeline"});
+swfobject.embedSWF("open-flash-chart.swf", "category_piechart", "650", "500", "9.0.0", "expressInstall.swf", {"get-data":"category_piechart"});
+            '
           end
           script :type => "text/javascript" do
             '
-function ofc_ready()
-{
-	//alert("ofc_ready");
-}
+function category_timeline() { return \'' + HSBCChart::Graph.category_timeline(from, to) + '\'; }
+function category_piechart() { return \'' + HSBCChart::Graph.category_piechart(from, to) + '\'; }
+            '
+          end
 
-function findSWF(movieName) {
-  if (navigator.appName.indexOf("Microsoft")!= -1) {
-    return window[movieName];
-  } else {
-    return document[movieName];
-  }
-}
-'
-          end
-          script :type => "text/javascript" do
-            'function open_flash_chart_data() {
-//alert("Reading data"); 
-var data = ' + HSBCChart::Graph.category_timeline + ';
-var retval =  JSON.stringify(data);
-//alert(retval);
-return retval;
- }'
-          end
-          div :id => "my_chart"
+          h1 "Category summary from #{from.strftime('%d-%m-%Y')} to #{to.strftime('%d-%m-%Y')}"
+          div :id => "category_timeline"
+          div :id => "category_piechart"
           ul do
             categories = HSBCChart::Category.after(from).sort { |x,y| x.total_negative <=> y.total_negative}
             categories.each { |category|
-              amount = category.total_negative * -1
+              transactions = category.transactions.clone.delete_if { |x| x.date < from or x.date > to }
+              transactions = transactions.sort { |x,y| x.date <=> y.date}
+              amount = 0
+              transactions.each { |transaction|
+                amount = amount + transaction.amount
+              }
               li "#{category.name} #{amount}"
-              ul do
-                transactions = category.transactions.clone.delete_if { |x| x.date < from }
-                transactions.each { |transaction|
-                  li do
-                    span transaction.date
-                    span transaction.amount
-                    span transaction.description
-                  end
-                }
+              ul do 
+                table do
+                  transactions.each { |transaction|
+                    tr do
+                      td transaction.date
+                      td transaction.amount
+                      td transaction.description
+                    end
+                  }
+                end
               end
             }
           end

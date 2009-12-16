@@ -1,6 +1,6 @@
 --- 
 - :category: Food
-  :expression: !ruby/regexp /(TESCO STORE|M\&S SIMPLY FOOD|DOMINOS|BURGER KING|KFC|COFFEE|SAINSBURYS|WAITROSE|CO-OP|EDEKA AKTIV)/
+  :expression: !ruby/regexp /(TESCO STORE|M\&S SIMPLY FOOD|DOMINOS|BURGER KING|KFC|COFFEE|SACAT SAINSBURYS|WAITROSE|CO-OP|EDEKA AKTIV)/
 - :category: Food
   :expression: !ruby/regexp /MARKS \& SPENCER/
 - :category: Food
@@ -71,3 +71,5 @@
   :expression: !ruby/regexp /DIXONS/
 - :category: Expenses
   :expression: !ruby/regexp /SANDTON SUN/
+- :category: Cash
+  :expression: !ruby/regexp /CASH/
