@@ -239,8 +239,23 @@ module HSBCChart
       self.transactions.each { |transaction|
         total += transaction.amount if transaction.amount > 0
       }
-      puts "Total credit for #{@name} = #{total}"
       return total
+    end
+
+    def debit_between(from, to)
+      total = 0
+      self.transactions.each { |transaction|
+        total += transaction.amount if transaction.amount < 0 and transaction.date <= to and transaction.date > from
+      }
+      return total * -1
+    end
+
+    def credit_between(from, to)
+      total = 0
+      self.transactions.each { |transaction|
+        total += transaction.amount if transaction.amount > 0 and transaction.date <= to and transaction.date > from
+      }
+      return total * -1
     end
     
     def total_debit
@@ -314,9 +329,14 @@ module HSBCChart
       return payees
     end
 
-    def Payee.last_month
-      now = DateTime.now
-      return Payee.after(Date.new(now.year, now.month - 1, now.day))
+    # Return a list of Payees from the specified list which have transactions between 2 dates
+    def Payee.date_range(list, from, to)
+      payees = []
+      list.each { |payee|
+        transactions = payee.transactions.clone.delete_if { |transaction| transaction.date < from or transaction.date > to }
+        payees << payee if transactions.length > 0
+      }
+      return payees
     end
   end
 
@@ -386,25 +406,13 @@ module HSBCChart
       return @@categories
     end
 
-    def Category.after(date)
+    def Category.date_range(list, from, to)
       categories = []
-      @@categories.each { |category|
-        payees = Payee.after(date, category.payees) 
+      list.each { |category|
+        payees = Payee.date_range(category.payees, from, to)
         categories << category if payees.length > 0
       }
       return categories
-    end
-    
-    def Category.total_amount
-      total = 0
-      @@categories.each { |category| total += category.total_amount }
-      return total
-    end
-    
-    def Category.total_negative
-      total = 0
-      @@categories.each { |category| total += category.total_negative }
-      return total
     end
   end
   
@@ -481,20 +489,9 @@ module HSBCChart
     end
 
     def Graph.category_piechart(from, now)
-      chart = Hash.new
-      chart["bg_colour"] = "#FFFFFF"
-      chart["elements"] = []
-      #chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
-      chart["x_axis"] = nil
-      element = Hash.new
-      element["type"] = "pie"
-      element["alpha"] = 0.6
-      element["start-angle"] = 35
-      element["animate"] = { "type" => "fade" }
-      element["tip"] = "£#val# of £#total#"
-      
+      chart = OpenFlashChart.pie_chart
+      element = OpenFlashChart.pie_element
       element["colours"] = COLOURS
-      element["values"] = []
       HSBCChart::Category.all.each { |category|
         if category.total_between(from, now) != 0
           amount = category.total_between(from, now)
@@ -506,87 +503,59 @@ module HSBCChart
       return chart.to_json
     end
 
-    def Graph.category_barchart(filename="barchart.png")
-      GoogleChart::BarChart.new('680x400', "Analysis of spending", :vertical, false) do |chart|
-        colour_index = 0
-        # Sort all the categories by their total negative transactions
-        categories = Category.all.sort { |x,y| x.total_negative <=> y.total_negative}
-        categories.each { |category|
-          amount = category.total_negative * -1
-          chart.data "#{category.name} (£#{amount})", [amount], COLOURS[colour_index] if amount > 0
-          colour_index = colour_index + 1
-        }
-        
-        uri = URI.parse(chart.to_escaped_url)
-        Net::HTTP.start(uri.host) { |http|
-          resp = http.get("#{uri.path}?#{uri.query}")
-          open(filename, "wb") { |file|
-            file.write(resp.body)
-          }
-        }
-      end
+    def Graph.creditors_piechart(from, to)
+      chart = OpenFlashChart.pie_chart
+      element = OpenFlashChart.pie_element
+      element["colours"] = COLOURS
+      HSBCChart::Payee.date_range(Payee.all, from, to).each { |payee|
+        amount = payee.credit_between(from, to) * -1
+        name = payee.name.gsub('\'', '')
+        element["values"] << { "value" => amount, "label" => "#{name} (£#{amount})" } if amount > 0
+      }
+      chart["elements"] << element
+      return chart.to_json
     end
-    def Graph.creditors(filename="piechart.png", date=nil)
-      payees = []
-      if date == nil
-        payees = Payee.all
-      else
-        payees = Payee.after(date)
-      end
-      puts payees
-      payees = payees.clone.delete_if {|payee| payee.total_credit <= 0 }
-      puts payees
-      GoogleChart::PieChart.new('680x400', "Creditors",false) do |chart|
-        payees.each { |payee|
-          amount = payee.total_credit
-          puts "#{payee.name} (£#{amount})"
-          chart.data "#{Graph.safe_name(payee.name)} (£#{amount})", amount if amount > 0
-        }
 
-        uri = URI.parse(chart.to_escaped_url)
-        Net::HTTP.start(uri.host) { |http|
-          resp = http.get("#{uri.path}?#{uri.query}")
-          open(filename, "wb") { |file|
-            file.write(resp.body)
-          }
-        }
-      end
-    end
-    def Graph.debitors(filename="piechart.png", date=nil)
-      payees = []
-      if date == nil
-        payees = Payee.all
-      else
-        payees = Payee.after(date)
-      end
-      puts payees
-      payees = payees.clone.delete_if {|payee| payee.total_debit <= 0 }
-      puts payees
-      GoogleChart::PieChart.new('680x400', "Debitors",false) do |chart|
-        payees.each { |payee|
-          amount = payee.total_debit
-          puts "#{payee.name} (£#{amount})"
-          chart.data "#{Graph.safe_name(payee.name)} (£#{amount})", amount if amount > 0
-        }
-        puts chart.to_url
-        uri = URI.parse(chart.to_escaped_url)
-        Net::HTTP.start(uri.host) { |http|
-          resp = http.get("#{uri.path}?#{uri.query}")
-          open(filename, "wb") { |file|
-            file.write(resp.body)
-          }
-        }
-      end
+    def Graph.debitors_piechart(from, to)
+      chart = OpenFlashChart.pie_chart
+      element = OpenFlashChart.pie_element
+      element["colours"] = COLOURS
+      HSBCChart::Payee.date_range(Payee.all, from, to).each { |payee|
+        amount = payee.debit_between(from, to)          
+        name = payee.name.gsub('\'', '')
+        element["values"] << { "value" => amount, "label" => "#{name} (£#{amount})" } if amount > 0
+      }
+      chart["elements"] << element
+      return chart.to_json
     end
   end
 
   class OpenFlashChart 
     # Return some Javascript which can be embedded within a HTML document which includes the OpenFlashChart
-    def OpenFlashChart.js(name, data, width=325, height=250, filename='open-flash-chart.swf')
+    def OpenFlashChart.js(name, data, width=650, height=500, filename='open-flash-chart.swf')
       "
+function #{name}() { return '#{data}'; };
 swfobject.embedSWF('#{filename}', '#{name}', '#{width}', '#{height}', '9.0.0', 'expressInstall.swf', {'get-data':'#{name}'});
-function #{name}() { return '#{data}'; }
       "
+    end
+
+    def OpenFlashChart.pie_chart
+      chart = Hash.new
+      chart["bg_colour"] = "#FFFFFF"
+      chart["elements"] = []
+      chart["x_axis"] = nil
+      return chart
+    end
+
+    def OpenFlashChart.pie_element
+      element = Hash.new
+      element["type"] = "pie"
+      element["alpha"] = 0.6
+      element["start-angle"] = 35
+      element["animate"] = { "type" => "fade" }
+      element["tip"] = "£#val# of £#total#"
+      element["values"] = []
+      return element
     end
   end
 
@@ -663,7 +632,7 @@ function #{name}() { return '#{data}'; }
           div :id => "category_timeline"
           div :id => "category_piechart"
           ul.categories! do
-            categories = HSBCChart::Category.after(from).sort { |x,y| x.total_negative <=> y.total_negative}
+            categories = HSBCChart::Category.date_range(Category.all, from, to).sort { |x,y| x.total_negative <=> y.total_negative}
             categories.each { |category|
               transactions = category.transactions.clone.delete_if { |x| x.date < from or x.date > to }
               transactions = transactions.sort { |x,y| x.date <=> y.date}
@@ -687,8 +656,16 @@ function #{name}() { return '#{data}'; }
           end
           
           h2 "Payees"
+          script :type => "text/javascript" do
+            OpenFlashChart.js('payee_debitors', HSBCChart::Graph.debitors_piechart(from, to))
+          end
+          div :id => "payee_debitors"
+          script :type => "text/javascript" do
+            OpenFlashChart.js('payee_creditors', HSBCChart::Graph.creditors_piechart(from, to))
+          end
+          div :id => "payee_creditors"
           ul.payees! do
-            payees = HSBCChart::Payee.after(from)
+            payees = HSBCChart::Payee.date_range(Payee.all, from, to)
             payees.each { |payee|
               li payee.name
               table do
