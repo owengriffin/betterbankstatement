@@ -50,8 +50,4 @@ HSBCChart::Category.all.each { |category|
   puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
 }
 
-HSBCChart::Statement.all_categories
-
-#HSBCChart::Graph.category_timeline
-
-# HSBCChart::Statement.payees
+HSBCChart::Statement.generate

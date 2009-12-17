@@ -447,7 +447,7 @@ module HSBCChart
     def Graph.category_timeline(from, now)
       chart = Hash.new
       chart["elements"] = []
-      chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
+      #chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
       min = 0
       max = 0
       index = 0
@@ -484,7 +484,7 @@ module HSBCChart
       chart = Hash.new
       chart["bg_colour"] = "#FFFFFF"
       chart["elements"] = []
-      chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
+      #chart["title"] = { "text"=> "Category spenditure between #{from.strftime('%d-%m-%Y')} and #{now.strftime('%d-%m-%Y')}" }
       chart["x_axis"] = nil
       element = Hash.new
       element["type"] = "pie"
@@ -580,67 +580,17 @@ module HSBCChart
     end
   end
 
+  class OpenFlashChart 
+    # Return some Javascript which can be embedded within a HTML document which includes the OpenFlashChart
+    def OpenFlashChart.js(name, data, width=325, height=250, filename='open-flash-chart.swf')
+      "
+swfobject.embedSWF('#{filename}', '#{name}', '#{width}', '#{height}', '9.0.0', 'expressInstall.swf', {'get-data':'#{name}'});
+function #{name}() { return '#{data}'; }
+      "
+    end
+  end
+
   class Statement
-
-    def Statement.css
-      style = Stylish.generate do
-        p :line_height => 1.5
-        a :text_transform => "uppercase"
-        rule "ul li" do
-          span :padding => 1.5
-        end
-        rule "ul li span.date", :font_size => "0.8em"
-      end
-      return style.to_s
-    end
-
-    def Statement.payees(filename="payees.html", from=nil)
-      if from == nil
-        from = DateTime.now
-        from = Date.new(from.year, from.month - 1, from.day)
-      end
-      Graph.creditors("creditors.png", from)
-      Graph.debitors("debitors.png", from)
-      mab = Markaby::Builder.new
-      mab.html do
-        head do
-          title "Category Summary" 
-          style :type => "text/css" do
-            Statement.css
-          end
-        end
-        body do
-          h1 "Payee Summary"
-          img :src => "creditors.png"
-          img :src => "debitors.png"
-          ul do
-            payees = HSBCChart::Payee.after(from)
-            payees.each { |payee|
-              li payee.name
-              ul do
-                transactions = payee.transactions.clone.delete_if { |x| x.date < from }
-                transactions.each { |transaction|
-                  li do
-                    span.date transaction.date
-                    span.amount "£#{transaction.amount}"
-                    span.description transaction.description
-                  end
-                }
-              end
-            }
-          end
-        end
-      end
-
-      File.open(filename, "w") do |file|
-        file.write(mab.to_s)
-      end
-    end
-
-    def Statement.last_month(now=nil)
-      now = DateTime.now if now == nil
-      return Date.new(now.year, now.month - 1, now.day)
-    end
 
     def Statement.jump_back_month(date=nil)
       date = DateTime.now if date == nil
@@ -653,31 +603,37 @@ module HSBCChart
       return Date.new(year, month, date.day)
     end
 
-    def Statement.all_categories(filename="categories.html")
-      monthly_filenames = []
+    def Statement.generate_monthly_statements
+      monthly_statements = []
       to = DateTime.now
-      from = Date.new(to.year, to.month - 1, to.day)
+      from = jump_back_month(to)
       total = Transaction.total_between(from, to)
       while total > 0
-        monthly_filename = "categories#{from.strftime('%Y%m%d')}_#{to.strftime('%Y%m%d')}.html"
-        monthly_filenames << monthly_filename
-        Statement.categories(monthly_filename, from, to)
+        monthly_filename = "#{from.strftime('%Y%m%d')}_#{to.strftime('%Y%m%d')}.html"
+        monthly_statements << { :filename => monthly_filename, :from => from, :to => to }
+        Statement.for_date_range(monthly_filename, from, to)
         to = from
         from = jump_back_month(from)
         total = Transaction.total_between(from, to)
       end
+      return monthly_statements
+    end
+
+    def Statement.generate(filename="index.html")
       mab = Markaby::Builder.new
       mab.html do
         head {
-          title "Category breakdown"
+          title "Bank Statement"
         }
         body do
-          h1 "Category breakdown"
+          h1 "Bank Statement"
           ul do
-            monthly_filenames.each { |monthly_filename|
+            Statement.generate_monthly_statements.each { |statement|
               li do
-                a :href => monthly_filename do
-                  monthly_filename
+                from = statement[:from]
+                to = statement[:to]
+                a :href => statement[:filename] do
+                  "#{from.strftime('%d/%m/%Y')} to #{to.strftime('%d/%m/%Y')}"
                 end
               end
             }
@@ -689,36 +645,24 @@ module HSBCChart
       end
     end
 
-    def Statement.categories(filename="categories.html", from=nil, to=nil)
-      if from == nil
-        from = Statement.last_month
-      end
-      if to == nil
-        to = DateTime.now
-      end
-
+    def Statement.for_date_range(filename, from, to)
       mab = Markaby::Builder.new
       mab.html do
-        head { title "Category from #{from.strftime('%d-%m-%Y')} to #{to.strftime('%d-%m-%Y')}" }
+        head { title "Bank statement for #{from.strftime('%d-%m-%Y')} to #{to.strftime('%d-%m-%Y')}" }
         body do
           script :type => "text/javascript", :src => "swfobject.js"
           script :type => "text/javascript" do
-            '
-swfobject.embedSWF("open-flash-chart.swf", "category_timeline", "650", "500", "9.0.0", "expressInstall.swf", {"get-data":"category_timeline"});
-swfobject.embedSWF("open-flash-chart.swf", "category_piechart", "650", "500", "9.0.0", "expressInstall.swf", {"get-data":"category_piechart"});
-            '
+            OpenFlashChart.js('category_timeline', HSBCChart::Graph.category_timeline(from, to))
           end
           script :type => "text/javascript" do
-            '
-function category_timeline() { return \'' + HSBCChart::Graph.category_timeline(from, to) + '\'; }
-function category_piechart() { return \'' + HSBCChart::Graph.category_piechart(from, to) + '\'; }
-            '
+            OpenFlashChart.js('category_piechart', HSBCChart::Graph.category_piechart(from, to))
           end
+          h1 "Bank statement for #{from.strftime('%d-%m-%Y')} to #{to.strftime('%d-%m-%Y')}"
 
-          h1 "Category summary from #{from.strftime('%d-%m-%Y')} to #{to.strftime('%d-%m-%Y')}"
+          h2 "Categories"
           div :id => "category_timeline"
           div :id => "category_piechart"
-          ul do
+          ul.categories! do
             categories = HSBCChart::Category.after(from).sort { |x,y| x.total_negative <=> y.total_negative}
             categories.each { |category|
               transactions = category.transactions.clone.delete_if { |x| x.date < from or x.date > to }
@@ -732,15 +676,34 @@ function category_piechart() { return \'' + HSBCChart::Graph.category_piechart(f
                 table do
                   transactions.each { |transaction|
                     tr do
-                      td transaction.date
-                      td transaction.amount
-                      td transaction.description
+                      td.date transaction.date
+                      td.amount transaction.amount
+                      td.description transaction.description
                     end
                   }
                 end
               end
             }
           end
+          
+          h2 "Payees"
+          ul.payees! do
+            payees = HSBCChart::Payee.after(from)
+            payees.each { |payee|
+              li payee.name
+              table do
+                transactions = payee.transactions.clone.delete_if { |x| x.date < from or x.date > to }
+                transactions.each { |transaction|
+                  tr do
+                    td.date transaction.date
+                    td.amount transaction.amount
+                    td.description transaction.description
+                  end
+                }
+              end
+            }
+          end
+
         end
       end
 
