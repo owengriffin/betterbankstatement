@@ -1,4 +1,4 @@
-require 'lib/hsbcchart.rb'
+require './lib/hsbcchart.rb'
 require 'lib/openstreetmap.rb'
 
 # puts OpenStreetMap::Geocoder.find_location('Reading').inspect
