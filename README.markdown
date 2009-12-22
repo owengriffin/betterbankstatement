@@ -1,8 +1,8 @@
-=HSBC Statement Analyser=
+=Better Bank Statement=
 
 Owen Griffin, 2009.
 
-This simple Ruby script will import HSBC bank statements and convert them into something which should be a little bit more readable.
+This simple Ruby script will import bank statements and convert them into webpages complete with graphs and categorizations.
 
 ==Dependencies==
 
@@ -22,6 +22,8 @@ sudo apt-get install libglib2.0-dev
 sudo gem install rpeg-markdown 
 
 ==Usage==
+
+
 
 ===Filters===
 
