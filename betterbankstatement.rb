@@ -1,9 +1,9 @@
-require './lib/hsbcchart.rb'
+require './lib/betterbankstatement.rb'
 require 'lib/openstreetmap.rb'
 
 # puts OpenStreetMap::Geocoder.find_location('Reading').inspect
 
-parser = HSBCChart::Parser.new
+parser = BetterBankStatement::Parser.new
 transactions=[]
 Dir.foreach("statements") { |filename|
   if filename =~ /.*\.txt$/
@@ -23,31 +23,31 @@ Dir.foreach("bankaccount") { |filename|
   end
 }
 
-# HSBCChart::Account.all.each { |account|
+# BetterBankStatement::Account.all.each { |account|
 # puts account.inspect
 # }
 
 #transactions = parser.open_xhb("bankaccount/homebank.xhb")
 
-HSBCChart::Payee.load_filters("filters.yaml")
-HSBCChart::Payee.categorize_all
+BetterBankStatement::Payee.load_filters("filters.yaml")
+BetterBankStatement::Payee.categorize_all
 
-# HSBCChart::Graph.category_barchart
-# HSBCChart::Graph.category_piechart
+# BetterBankStatement::Graph.category_barchart
+# BetterBankStatement::Graph.category_piechart
 
-# HSBCChart::Payee.all.each {|payee|
+# BetterBankStatement::Payee.all.each {|payee|
 #   puts "Payee: #{payee.name}"
 #   payee.transactions.each { |transaction|
 #     puts "   #{transaction.date} #{transaction.description}"
 #   }
 # }
 
-# HSBCChart::Location.all.each {|location|
+# BetterBankStatement::Location.all.each {|location|
 #   puts "Location #{location.name}"
 # }
 
-HSBCChart::Category.all.each { |category|
+BetterBankStatement::Category.all.each { |category|
   puts "#{category.name} #{category.transactions.length} #{category.total_amount}"
 }
 
-HSBCChart::Statement.generate
+BetterBankStatement::Statement.generate
