@@ -1,0 +1,55 @@
+@red: #d00;
+@grey: #ddd;
+@black: #000;
+@lightgrey: #eee;
+
+.title {
+    font-weight: bold;
+    color: @red;
+}
+.negative {
+    color: @red;
+}
+.positive {
+    color: @black;
+}
+
+#betterbankstatement {
+    font-family: helvetica,arial,freesans,clean,sans-serif;
+
+    h1 {
+	.title;
+	font-size: 2em;
+	
+    }
+
+    div#categories, div#payees {
+	width: 800px;
+	ul {
+	    padding: 0;
+	    margin: 0;
+	}
+	ul li {
+	    div.header {
+		font-weight: bold;
+		border-bottom: 1px solid @lightgrey;
+		background-color: @grey;
+		span.amount {
+		    float: right;
+		    text-align: right;
+		}
+	    }
+	    table {
+		tr {
+		    td.date {
+			min-width: 100px;
+		    }
+		    td.amount {
+			min-width: 100px;
+			text-align: right;
+		    }
+		}
+	    }
+	}
+    }
+}
