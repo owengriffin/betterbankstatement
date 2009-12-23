@@ -3,14 +3,21 @@
 # <folder> = A folder containing bank statements
 require 'lib/betterbankstatement.rb'
 
+folder = ARGV[0]
+
+if folder == nil
+  puts "Please read README for usage"
+  exit
+end
+
 parser = BetterBankStatement::Parser.new
-Dir.foreach(ARGV[0]) { |filename|
+Dir.foreach(folder) { |filename|
   if filename =~ /.*\.txt$/
-    parser.open("#{ARGV[0]}/#{filename}")
+    parser.open("#{folder}/#{filename}")
   elsif filename =~ /.*\.qif$/
-    parser.open_qif("#{ARGV[0]}/#{filename}")
+    parser.open_qif("#{folder}/#{filename}")
   elsif filename =~ /.*\.csv/
-    parser.open_csv("#{ARGV[0]}/#{filename}")
+    parser.open_csv("#{folder}/#{filename}")
   end
 }
 

@@ -23,7 +23,9 @@ sudo gem install rpeg-markdown
 
 ==Usage==
 
+chmod +x *.rb
 
+./betterbankstatement.rb folder/
 
 ===Filters===
 
