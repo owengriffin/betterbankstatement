@@ -1,0 +1,9 @@
+
+%p You will need to convert the PDF file to text using pdf2text before uploading it.
+
+%form{:enctype => "multipart/form-data", :method => "post", :action => "/import/pdf", :name => "import_pdf"}
+  %fieldset
+    %label
+      PDF:
+      %input{:type => "file", :name => "import_file"}
+  %input{:type => "submit", :value => "Import"}

@@ -1,26 +1,38 @@
-
 # -*- coding: utf-8 -*-
-require "lib/betterbankstatement/account.rb"
-require 'lib/betterbankstatement/location.rb'
-require 'lib/betterbankstatement/payee.rb'
-require 'lib/betterbankstatement/category.rb'
-require 'lib/betterbankstatement/statement.rb'
-require 'lib/betterbankstatement/graph.rb'
-require 'lib/betterbankstatement/parser.rb'
-require 'lib/betterbankstatement/transaction.rb'
-require 'lib/openflashchart.rb'
+$: << File.expand_path(File.dirname(__FILE__) + "/../lib")
 
 require 'date'
 require 'yaml'
 require 'rubygems'
-require 'mechanize'
-require 'net/http'
-require 'net/https'
-require 'rexml/document'
-require 'google_chart'
-require 'markaby'
-require 'hpricot'
 require 'csv'
-require 'stylish'
 require 'json'
+require 'logger'
+require 'dm-core'
+require 'dm-aggregates'
+require 'chronic'
 
+require 'betterbankstatement/category.rb'
+require 'betterbankstatement/import.rb'
+require 'betterbankstatement/transaction.rb'
+require 'betterbankstatement/filter.rb'
+require 'betterbankstatement/time.rb'
+
+# Set the database logging
+DataMapper::Logger.new($stdout, :info)
+
+# Declare the module and create a logger
+module BetterBankStatement
+  @log = Logger.new('/tmp/betterbankstatement.log')
+  def self.log
+    return @log
+  end
+  @dir = File.expand_path(File.dirname(__FILE__)) + "/betterbankstatement"
+  def self.dir
+    @dir
+  end
+  # Initialize the database connection
+  def self.load(file=":memory:")
+    DataMapper.setup(:default, "sqlite3:#{file}")
+    DataMapper.auto_upgrade!
+  end
+end

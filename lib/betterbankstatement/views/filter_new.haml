@@ -1,0 +1,10 @@
+
+%form{:enctype => "multipart/form-data", :method => "post"}
+  %fieldset
+    %label
+      Transaction containing:
+      %input{:name => "expression", :value => "#{@expression}"}
+    %label
+      Category
+      %input{:name => "category"}
+  %input{:type => "submit", :value => "Create"}

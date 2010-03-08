@@ -1,0 +1,40 @@
+!!! Strict
+%html
+  %head
+    %title= "BetterBankStatement - #{session[:title]}"
+    %meta{:"http-equiv" => "Content-Type", :content => "text/html; charset=utf-8"}/
+    %link{:rel => "stylesheet", :href => "/reset.css", :type => "text/css"}/
+    %link{:rel => "stylesheet", :href => "/style.css", :type => "text/css"}/
+    %script{:type => "text/javascript", :src => "/swfobject.js"}
+      // Empty
+  %body#betterbankstatement
+    #header 
+      %a{href="/"} BetterBankStatement
+      #navigation
+        %ul
+          %li
+            %a{:href => "/"} Home
+          %li
+            %a{:href => "/import"} Import
+          %li
+            %a{:href => "/categories"} Categories
+          %li
+            %a{:href => "/filters"} Filters
+          %li
+            %a{:href => "/transactions"} Transactions
+
+    #content
+
+      - if session[:notice] != nil and not session[:notice].empty?
+        %p.notice= session[:notice]
+        - session[:notice] = ''
+
+
+      %h1 
+        =session[:title]
+
+      - if session[:message] != nil
+        %h2= session[:message]
+        
+      != yield
+

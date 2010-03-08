@@ -1,7 +1,9 @@
 statements
-*.png
 *.html
 *.yaml
 *.json
 *~
 nbproject
+*#
+*.#*
+*.log

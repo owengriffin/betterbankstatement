@@ -1,0 +1,54 @@
+
+%h3 Summary
+
+%table
+  %tbody
+    %tr
+      %td Total
+      %td.currency= @category.total_amount(@range)
+    %tr
+      %td Debit
+      %td.currency= @category.debit(@range)
+    %tr
+      %td Credit
+      %td.currency= @category.credit(@range)
+    %tr
+      %td Monthly Average
+      %td.currency= @category.monthly_average
+
+%h3 Transactions
+
+%table
+  %thead
+    %tr
+      %td Date
+      %td Description
+      %td Amount
+  %tbody
+    - @category.transactions.all(:date => @range).each do |transaction|
+      %tr
+        %td= transaction.date.strftime('%Y/%m/%d')
+        %td= transaction.description
+        %td.currency= transaction.amount
+
+%h3 Date Range
+
+- if @category.total_transactions > 0
+  %ul
+    - latest_date = @category.latest.date
+    - latest_date = Date.today if latest_date < Date.today
+    - from = @category.earliest.date
+    - month = from.month
+    - from = Date.new(from.year, month, 1)
+    - to = Date.new(from.year, month, Date.days_in_month(month))
+    - until to.year == latest_date.year and to.month >= latest_date.month
+      %li
+        %a{:href => "/category/#{@category.name}/#{from.year}/#{from.month}"}
+          %span.from= from.strftime('%Y/%m/%d')
+          to
+          %span.to= to.strftime('%Y/%m/%d')
+      - from = to + 1
+      - to = Date.jump_forward_month(to)
+  
+
+

@@ -1,29 +1,51 @@
 
 module BetterBankStatement
+
   class Transaction
-    attr_accessor :received
-    attr_accessor :date
-    attr_accessor :description
-    attr_accessor :amount
-    attr_accessor :location
-    attr_accessor :payee
-    attr_accessor :account
+    include DataMapper::Resource
+    property :id, Serial
+    property :recieved, DateTime
+    property :date, DateTime
+    property :description, String
+    property :amount, Integer
+    has n, :categories, :through => Resource
 
-    @@transactions = []
-
-    def Transaction.create
-      transaction = Transaction.new
-      @@transactions << transaction
-      return transaction
+    def category
+      self.categories.first
     end
 
-    # Return the total number of transactions between two dates
-    def Transaction.total_between(from, to)
-      total = 0
-      @@transactions.each { |transaction|
-        total = total + 1 if transaction.date > from and transaction.date < to
-      }
-      return total
+    def category=(category)
+      self.categories << category
+    end
+     
+    # Apply all the filters to this transaction if they match
+    def filter
+      Filter.all.each { |filter|
+        regexp = Regexp.new(filter.expression)
+        if regexp.match(self.description)
+          BetterBankStatement.log.debug "Placing #{self.description} in #{filter.category.name}"
+          self.categories << filter.category
+          self.save
+          filter.category.save
+        end
+      } 
+    end
+
+    # Filter all of the available transactions
+    def self.filter
+      Transaction.all.each do |transaction|
+        transaction.filter
+      end
+    end
+
+    # Return the earliest transaction
+    def self.earliest
+      return Transaction.first(:order => [:date.asc])
+    end
+
+    # Return the latest transaction
+    def self.latest
+      return Transaction.first(:order => [:date.desc])
     end
   end
 end

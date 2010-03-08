@@ -1,0 +1,7 @@
+
+%form{:method => "post"}
+  %fieldset
+    %label
+      %p= "Are you sure you want to delete the filter #{@filter.expression} -> #{@filter.category.name}?"
+      %input{:type => "checkbox", :name => "confirm"}
+  %input{:type => "submit", :value => "Delete"}

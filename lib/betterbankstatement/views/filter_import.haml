@@ -1,0 +1,7 @@
+
+%form{:enctype => "multipart/form-data", :method => "post", :action => "/filter/import", :name => "filter_import"}
+  %fieldset
+    %label
+      File:
+      %input{:type => "file", :name => "import_file"}
+  %input{:type => "submit", :value => "Import"}

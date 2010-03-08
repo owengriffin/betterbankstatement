@@ -1,0 +1,81 @@
+@red: #d00;
+@grey: #ddd;
+@black: #000;
+@lightgrey: #eee;
+
+.title {
+    font-weight: bold;
+    color: @red;
+}
+.negative {
+    color: @red;
+}
+.positive {
+    color: @black;
+}
+
+#betterbankstatement {
+    font-family: helvetica,arial,freesans,clean,sans-serif;
+
+    h1 {
+	.title;
+	font-size: 2em;
+    }
+	
+    table {
+	border-spacing: 0;
+    }
+
+    table#monthlysummary,
+    table#categorysummary {
+	border: 0;
+	td {
+	    padding: 5px;
+	}
+	thead tr td {
+	    border-bottom: 2px solid @black;
+	    background-color: @lightgrey;
+	    text-align: center;
+	}
+	tbody {
+	    tr.summary td {
+		border-top: 2px solid @black;
+		background-color: @lightgrey;
+	    }
+	    td.total {
+		text-align: right;
+		min-width: 100px;
+	    }
+	}
+    }
+
+    div#categories, div#payees {
+	width: 800px;
+	ul {
+	    padding: 0;
+	    margin: 0;
+	}
+	ul li {
+	    div.header {
+		font-weight: bold;
+		border-bottom: 1px solid @lightgrey;
+		background-color: @grey;
+		span.amount {
+		    float: right;
+		    text-align: right;
+		}
+	    }
+	    table {
+		tr {
+		    td.date {
+			min-width: 100px;
+		    }
+		    td.amount {
+			min-width: 100px;
+			text-align: right;
+		    }
+		}
+	    }
+	}
+    }
+}

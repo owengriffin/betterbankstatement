@@ -1,0 +1,23 @@
+#!/usr/bin/ruby
+require 'lib/betterbankstatement.rb'
+
+options = {}
+options[:database]=ARGV[0]
+options[:verbose]=ARGV[2]
+
+usage = "Usage: betterbankstatement <database>"
+
+if options[:database] == nil or options[:database].empty?
+  puts usage
+  exit
+end
+
+if options[:verbose]
+  BetterBankStatement.log.level = Logger::DEBUG
+end
+
+BetterBankStatement.load(options[:database])
+
+require 'sinatra'
+load 'betterbankstatement/server.rb'
+

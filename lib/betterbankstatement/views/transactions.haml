@@ -1,0 +1,45 @@
+
+- if @global_date_range != nil
+  %ul#year_list
+    - iterator = @global_date_range.begin
+    - while iterator < @global_date_range.end >> 1
+      %li 
+        %a{:href => "/transactions/#{iterator.strftime('%Y')}/#{iterator.strftime('%m')}", :title => iterator.strftime('%Y/%m')}
+          = iterator.strftime('%Y/%m')
+      - iterator = iterator >> 1
+
+- if @date_range != nil
+  %script{:type => 'text/javascript', :language => 'javascript'}
+    = "swfobject.embedSWF('/open-flash-chart.swf', 'timeline', '500', '250', '9.0.0', 'expressInstall.swf', {'data-file':'/category/timeline/#{@date_range.begin.strftime('%Y')}/#{@date_range.begin.strftime('%m')}/#{@date_range.end - @date_range.begin}'});"
+  
+  %div{:id=>'timeline'}
+
+  %script{:type => 'text/javascript', :language => 'javascript'}
+    = "swfobject.embedSWF('/open-flash-chart.swf', 'piechart_credit', '250', '250', '9.0.0', 'expressInstall.swf', {'data-file':'/transactions/#{@date_range.begin.strftime('%Y')}/#{@date_range.begin.strftime('%m')}/piechart/credit'});"
+  
+  %div{:id=>'piechart_credit'}
+
+  %script{:type => 'text/javascript', :language => 'javascript'}
+    = "swfobject.embedSWF('/open-flash-chart.swf', 'piechart_debit', '250', '250', '9.0.0', 'expressInstall.swf', {'data-file':'/transactions/#{@date_range.begin.strftime('%Y')}/#{@date_range.begin.strftime('%m')}/piechart/debit'});"
+  %div{:id=>'piechart_debit'}
+
+- if @transactions != nil
+  %table
+    %thead
+      %tr
+        %td Date
+        %td Description
+        %td Amount
+    %tbody
+      - @transactions.each do |transaction|
+        %tr
+          %td= transaction.date.strftime('%Y/%m/%d')
+          %td
+            %a{:href => "/filter/new?expression=#{transaction.description}", :title => "Filter '#{transaction.description}'"} +
+            - transaction.categories.each do |category|
+              %a{:href => "/category/#{category.name}"}= category.name
+            =transaction.description
+          %td.currency= transaction.amount
+            
+            
+    

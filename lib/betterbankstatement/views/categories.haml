@@ -1,0 +1,12 @@
+
+- if @categories == nil or @categories.length == 0
+  %p There are no categories.
+- else
+  %ul#category_list
+    - @categories.each do |category|
+      %li
+        %a{:href => "/category/#{category.name}"}
+          = category.name
+    
+%a{:href => "/category/new"}
+  New Category

@@ -1,0 +1,27 @@
+
+- if @filters == nil or @filters.length == 0
+  %p There are currently no filters.
+- else
+  %ul#filter_list
+    - @filters.each do |filter|
+      %li
+        %span= filter.expression
+        %span ->
+        %span= filter.category.name
+        %a{:href => "/filter/#{filter.id}/delete", :title => "Delete #{filter.expression} -> #{filter.category.name} filter"} Remove
+
+%h3 Actions
+
+%ul#actions
+  %li
+    %a{:href => "/filter/new"}
+      New Filter
+  %li
+    %a{:href => "/filter/export"}
+      Export Filters
+  %li
+    %a{:href => "/filter/import"}
+      Import Filters
+  %li
+    %a{:href => "/filter/apply"}
+      Apply Filters

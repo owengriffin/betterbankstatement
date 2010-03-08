@@ -1,0 +1,7 @@
+
+%form{:enctype => "multipart/form-data", :method => "post", :action => "/import/qif", :name => "import_qif"}
+  %fieldset
+    %label
+      QIF file
+      %input{:type => "file", :name => "import_file"}
+  %input{:type => "submit", :value => "Import"}
